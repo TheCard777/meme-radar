@@ -68,7 +68,7 @@ async function readSettings(): Promise<Settings> {
   const { data } = await supabaseAdmin
     .from("bot_settings")
     .select(
-      "telegram_threshold, critical_threshold, status, early_opportunity_enabled, early_opportunity_min_score, early_opportunity_min_buyers, early_opportunity_max_buyers, early_opportunity_max_age_minutes, early_opportunity_min_liquidity_usd",
+      "telegram_threshold, critical_threshold, status, early_opportunity_enabled, early_opportunity_min_buyers, early_opportunity_max_buyers, early_opportunity_max_age_minutes, early_opportunity_min_liquidity_usd, early_opportunity_min_volume_1h_usd, early_opportunity_acceleration_factor",
     )
     .limit(1)
     .maybeSingle();
