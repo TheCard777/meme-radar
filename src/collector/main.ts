@@ -123,9 +123,22 @@ export async function runCollectorWorker(): Promise<SolanaLogCollector> {
       : async () => {
           const { analyzeRealWallets } = await import("../lib/wallets.server");
           const { enrichRealTokens } = await import("../lib/enrichment.server");
+          const { detectSmartWalletEntries } = await import("../lib/smart-wallet-alerts.server");
           const wallets = await analyzeRealWallets();
           const result = await enrichRealTokens();
-          return { wallets, ...result } as Record<string, unknown>;
+          let smartWalletAlerts: unknown = null;
+          try {
+            smartWalletAlerts = await detectSmartWalletEntries();
+          } catch (error) {
+            process.stderr.write(
+              `${JSON.stringify({
+                level: "error",
+                scope: "smart_wallet_alerts",
+                message: error instanceof Error ? error.message : String(error),
+              })}\n`,
+            );
+          }
+          return { wallets, smartWalletAlerts, ...result } as Record<string, unknown>;
         };
 
     const cycle = async () => {
