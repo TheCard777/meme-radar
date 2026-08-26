@@ -41,7 +41,9 @@ export async function fetchTokens(): Promise<TokenRow[]> {
     .from("tokens")
     .select("*")
     .eq("is_simulated", false)
-    .order("score", { ascending: false });
+    // Classement : meilleur score d'abord, puis le token le plus récent.
+    .order("score", { ascending: false })
+    .order("launched_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as unknown as TokenRow[];
 }
