@@ -76,7 +76,9 @@ export function OpportunityTable({
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <caption className="sr-only">
-            Tokens Solana détectés, triés par score de détection
+            {sortBy === "score"
+              ? "Tokens Solana détectés, triés par score Radar décroissant"
+              : "Tokens Solana détectés, triés du plus récent au plus ancien"}
           </caption>
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
