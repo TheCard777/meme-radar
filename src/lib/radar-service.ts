@@ -36,23 +36,6 @@ export async function fetchBotSettings(): Promise<BotSettings> {
   };
 }
 
-export async function updateBotSettings(
-  id: string,
-  patch: Partial<{
-    status: BotStatus;
-    telegram_threshold: number;
-    critical_threshold: number;
-    signal_categories: SignalCategories;
-    last_scan_at: string;
-  }>,
-): Promise<void> {
-  const { error } = await supabase
-    .from("bot_settings")
-    .update(patch as never)
-    .eq("id", id);
-  if (error) throw error;
-}
-
 export async function fetchTokens(): Promise<TokenRow[]> {
   const { data, error } = await supabase
     .from("tokens")
