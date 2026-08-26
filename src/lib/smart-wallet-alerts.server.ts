@@ -130,6 +130,8 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
     minBuyers: MIN_TOKEN_BUYERS,
     skippedLowScore: 0,
     skippedFewBuyers: 0,
+    skippedTooOld: 0,
+    maxAgeMinutes: MAX_TOKEN_AGE_MINUTES,
     rankMin: ALERT_RANK_MIN,
     rankMax: ALERT_RANK_MAX,
     tradingEnabled: false,
