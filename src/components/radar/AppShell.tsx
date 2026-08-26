@@ -38,7 +38,7 @@ export function AppShell({
                 Meme Radar
               </p>
               <p className="text-xs text-muted-foreground">
-                1M$ soon … Pseaume91
+                1M$ soon … Psaume91
               </p>
             </div>
           </div>
