@@ -88,7 +88,7 @@ export async function sendAlertTelegram(
     return { sent: false, reason: "Secrets Telegram non configurés" };
   }
 
-  const prefix = alert.level === "critical" ? "🚨 CRITIQUE" : "📡 SIGNAL";
+  const prefix = alert.level === "critical" ? "🚨 PRIORITÉ" : "📡 SIGNAL";
   const tag = alert.simulated ? "\n<i>Donnée de simulation — aucun trading</i>" : "";
   const text = `${prefix} ${alert.symbol} — score ${alert.score}/100\n${alert.message}${tag}`;
 

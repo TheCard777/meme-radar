@@ -38,7 +38,33 @@ export async function runCollectorWorker(): Promise<SolanaLogCollector> {
   const collector = new SolanaLogCollector({ rpcUrl, wsUrl, programFilter, store });
   await collector.start();
 
+  // Boucle d'enrichissement + scoring + alertes Telegram (observation seule).
+  let enrichTimer: ReturnType<typeof setInterval> | null = null;
+  if (process.env["COLLECTOR_ENRICH"] !== "off") {
+    const intervalMs = Number(process.env["COLLECTOR_ENRICH_INTERVAL_MS"] ?? 90_000);
+    const { enrichRealTokens } = await import("../lib/enrichment.server");
+    const cycle = async () => {
+      try {
+        const result = await enrichRealTokens();
+        process.stdout.write(
+          `${JSON.stringify({ level: "info", scope: "enrichment", ...result })}\n`,
+        );
+      } catch (error) {
+        process.stderr.write(
+          `${JSON.stringify({
+            level: "error",
+            scope: "enrichment",
+            message: error instanceof Error ? error.message : String(error),
+          })}\n`,
+        );
+      }
+    };
+    enrichTimer = setInterval(() => void cycle(), Math.max(30_000, intervalMs));
+    void cycle();
+  }
+
   const shutdown = (signal: string) => {
+    if (enrichTimer) clearInterval(enrichTimer);
     void collector.stop(signal).finally(() => process.exit(0));
   };
   process.on("SIGINT", () => shutdown("SIGINT"));

@@ -1,28 +1,37 @@
 /**
- * Enrichissement + scoring des tokens réels — SERVEUR / WORKER UNIQUEMENT.
+ * Enrichissement + scoring + alertes Telegram — SERVEUR / WORKER UNIQUEMENT.
  *
- * Cycle : tokens réels (is_simulated = false) -> métriques de marché
- * DEX Screener -> score /100 -> mise à jour token + snapshot -> alerte
- * Telegram si score >= seuil configuré.
+ * Cycle : tokens réels (is_simulated = false) -> métriques DEX Screener +
+ * concentration des holders (RPC) -> score /100 renormalisé -> mise à jour
+ * token + snapshot -> alerte Telegram si le niveau SIGNAL/PRIORITÉ est franchi.
  *
  * MODE OBSERVATION UNIQUEMENT : aucun ordre, aucune clé privée.
- * Les tokens de démonstration (is_simulated = true) ne sont jamais modifiés
- * et ne déclenchent jamais d'alerte Telegram.
+ * Les tokens de démonstration (is_simulated = true) ne sont jamais modifiés,
+ * jamais scorés et ne déclenchent jamais d'alerte.
  */
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { computeScore, statusForScore } from "./scoring";
-import { fetchMarketMetrics, MARKET_BATCH_SIZE, type MarketMetrics } from "./market.server";
+import { computeScore, tokenStatusForLevel, type ScoringResult } from "./scoring";
+import {
+  fetchHolderConcentration,
+  fetchMarketMetrics,
+  MARKET_BATCH_SIZE,
+  type MarketMetrics,
+} from "./market.server";
 import { sendAlertTelegram } from "./telegram.server";
+
+/** Délai minimal entre deux alertes pour un même token. */
+export const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
 
 export interface EnrichmentResult {
   scanned: number;
   enriched: number;
   withoutMarketData: number;
+  insufficientData: number;
   alertsCreated: number;
   telegramSent: number;
   telegramSkipped: string | null;
-  topScore: number;
+  topScore: number | null;
   errors: string[];
   tradingEnabled: false;
 }
@@ -34,12 +43,13 @@ interface TokenRecord {
   mint_address: string;
   launched_at: string;
   smart_wallet_count: number;
-  alerted_score: number;
+  alert_level: string | null;
+  last_alert_at: string | null;
 }
 
 interface Settings {
-  telegramThreshold: number;
-  criticalThreshold: number;
+  signalThreshold: number;
+  priorityThreshold: number;
   botActive: boolean;
 }
 
@@ -50,10 +60,61 @@ async function readSettings(): Promise<Settings> {
     .limit(1)
     .maybeSingle();
   return {
-    telegramThreshold: data?.telegram_threshold ?? 85,
-    criticalThreshold: data?.critical_threshold ?? 90,
+    signalThreshold: data?.telegram_threshold ?? 85,
+    priorityThreshold: data?.critical_threshold ?? 90,
     botActive: data?.status === "active",
   };
+}
+
+function fmtUsd(value: number | null): string {
+  if (value === null) return "inconnu";
+  return `${Math.round(value).toLocaleString("fr-FR")} $`;
+}
+
+/** Message Telegram : token, score, sous-scores, marché, horodatage, liens. */
+export function buildAlertMessage(params: {
+  symbol: string;
+  name: string;
+  mint: string;
+  scoring: ScoringResult;
+  metrics: MarketMetrics | undefined;
+  level: "signal" | "priority";
+}): string {
+  const { scoring, metrics } = params;
+  const top = scoring.subScores
+    .filter((s) => s.normalized !== null)
+    .sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
+    .slice(0, 3)
+    .map((s) => `• ${s.label} : ${s.points}/${s.weight} (${s.detail})`)
+    .join("\n");
+
+  const lines = [
+    `${params.name} (${params.symbol})`,
+    `Score ${scoring.score}/100 — fiabilité ${Math.round(scoring.confidence * 100)} %`,
+    "",
+    "Sous-scores principaux :",
+    top || "• aucun sous-score disponible",
+    "",
+    `Market cap : ${fmtUsd(metrics?.marketCap ?? null)}`,
+    `Liquidité : ${fmtUsd(metrics?.liquidityUsd ?? null)}`,
+    `Volume 24h : ${fmtUsd(metrics?.volume24h ?? null)}`,
+    `Acheteurs 1h : ${metrics?.buyers1h ?? "inconnu"}`,
+  ];
+
+  if (scoring.missing.length > 0) {
+    lines.push(`Données manquantes : ${scoring.missing.join(", ")}`);
+  }
+
+  lines.push(
+    "",
+    `Horodatage : ${new Date().toISOString()}`,
+    `DEX : ${metrics?.pairUrl ?? `https://dexscreener.com/solana/${params.mint}`}`,
+    `Explorer : https://solscan.io/token/${params.mint}`,
+    "",
+    "Indicateur d'observation — ni conseil financier ni garantie. Aucun trading automatique.",
+  );
+
+  return lines.join("\n");
 }
 
 /**
@@ -65,7 +126,9 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
 
   const { data, error } = await supabaseAdmin
     .from("tokens")
-    .select("id, symbol, name, mint_address, launched_at, smart_wallet_count, alerted_score")
+    .select(
+      "id, symbol, name, mint_address, launched_at, smart_wallet_count, alert_level, last_alert_at",
+    )
     .eq("is_simulated", false)
     .order("last_enriched_at", { ascending: true, nullsFirst: true })
     .limit(Math.min(limit, MARKET_BATCH_SIZE));
@@ -77,10 +140,11 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
     scanned: tokens.length,
     enriched: 0,
     withoutMarketData: 0,
+    insufficientData: 0,
     alertsCreated: 0,
     telegramSent: 0,
     telegramSkipped: null,
-    topScore: 0,
+    topScore: null,
     errors,
     tradingEnabled: false,
   };
@@ -103,24 +167,43 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       (now.getTime() - new Date(token.launched_at).getTime()) / 60_000,
     );
 
-    const scoring = computeScore({
-      marketCap: metrics?.marketCap ?? 0,
-      liquidityUsd: metrics?.liquidityUsd ?? 0,
-      volume24h: metrics?.volume24h ?? 0,
-      volume1h: metrics?.volume1h ?? 0,
-      buyers: metrics?.buyers1h ?? 0,
-      priceChange1h: metrics?.priceChange1h ?? 0,
-      smartWallets: token.smart_wallet_count ?? 0,
-      ageMinutes,
-      hasMarketData: Boolean(metrics),
-    });
+    // Concentration on-chain uniquement pour les tokens ayant un marché.
+    const holdersTop10Share = metrics
+      ? await fetchHolderConcentration(token.mint_address)
+      : null;
 
-    const status = metrics
-      ? statusForScore(scoring.score, settings.telegramThreshold, settings.criticalThreshold)
-      : "watching";
+    const scoring = computeScore(
+      {
+        liquidityUsd: metrics?.liquidityUsd ?? null,
+        volume24h: metrics?.volume24h ?? null,
+        volume1h: metrics?.volume1h ?? null,
+        buyers1h: metrics?.buyers1h ?? null,
+        priceChange1h: metrics?.priceChange1h ?? null,
+        // Analyse smart money non branchée en V1 : explicitement inconnue.
+        smartWallets: token.smart_wallet_count > 0 ? token.smart_wallet_count : null,
+        holdersTop10Share,
+        creatorHistory: null,
+        ageMinutes,
+      },
+      { signal: settings.signalThreshold, priority: settings.priorityThreshold },
+    );
 
     const symbol =
       metrics?.symbol && metrics.symbol.length <= 24 ? metrics.symbol : token.symbol;
+
+    const marketMetrics = {
+      priceUsd: metrics?.priceUsd ?? null,
+      marketCap: metrics?.marketCap ?? null,
+      liquidityUsd: metrics?.liquidityUsd ?? null,
+      volume24h: metrics?.volume24h ?? null,
+      volume1h: metrics?.volume1h ?? null,
+      buyers1h: metrics?.buyers1h ?? null,
+      priceChange1h: metrics?.priceChange1h ?? null,
+      holdersTop10Share,
+      creatorHistory: null,
+      dex: metrics?.dex ?? null,
+      pairUrl: metrics?.pairUrl ?? null,
+    };
 
     const { error: updateError } = await supabaseAdmin
       .from("tokens")
@@ -134,10 +217,15 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
         volume_24h: metrics?.volume24h ?? 0,
         volume_1h: metrics?.volume1h ?? 0,
         new_buyers: Math.round(metrics?.buyers1h ?? 0),
-        market_source: metrics ? `dexscreener:${metrics.dex}` : "none",
-        score: scoring.score,
-        score_factors: scoring.factors as unknown as never,
-        status,
+        market_source: metrics ? `dexscreener:${metrics.dex ?? "unknown"}` : "none",
+        score: scoring.score ?? 0,
+        score_factors: scoring.subScores as unknown as never,
+        market_metrics: marketMetrics as unknown as never,
+        missing_metrics: scoring.missing as unknown as never,
+        score_confidence: scoring.confidence,
+        data_sufficient: scoring.score !== null,
+        holders_top10_share: holdersTop10Share,
+        status: tokenStatusForLevel(scoring.level),
         last_enriched_at: now.toISOString(),
       })
       .eq("id", token.id);
@@ -151,42 +239,49 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       result.withoutMarketData += 1;
       continue;
     }
-
     result.enriched += 1;
-    result.topScore = Math.max(result.topScore, scoring.score);
+
+    if (scoring.score === null) {
+      result.insufficientData += 1;
+    } else {
+      result.topScore = Math.max(result.topScore ?? 0, scoring.score);
+    }
 
     await supabaseAdmin.from("token_snapshots").insert({
       token_id: token.id,
-      market_cap: metrics.marketCap,
-      liquidity_usd: metrics.liquidityUsd,
-      volume: metrics.volume24h,
-      buyers: Math.round(metrics.buyers1h),
-      score: scoring.score,
+      market_cap: metrics.marketCap ?? 0,
+      liquidity_usd: metrics.liquidityUsd ?? 0,
+      volume: metrics.volume24h ?? 0,
+      buyers: Math.round(metrics.buyers1h ?? 0),
+      score: scoring.score ?? 0,
     });
 
-    // Alerte uniquement au-dessus du seuil, et seulement si le score progresse
-    // significativement depuis la dernière alerte (anti-spam).
-    const shouldAlert =
-      scoring.score >= settings.telegramThreshold &&
-      scoring.score >= (token.alerted_score ?? 0) + 3;
+    if (scoring.level !== "signal" && scoring.level !== "priority") continue;
 
-    if (!shouldAlert) continue;
+    // Anti-spam : une seule alerte par token et par niveau + cooldown.
+    const sameLevel = token.alert_level === scoring.level;
+    const priorityAfterSignal =
+      scoring.level === "priority" && token.alert_level === "signal";
+    const cooldownActive =
+      token.last_alert_at !== null &&
+      now.getTime() - new Date(token.last_alert_at).getTime() < ALERT_COOLDOWN_MS;
 
-    const level = scoring.score >= settings.criticalThreshold ? "critical" : "signal";
-    const message = [
-      `MC ${Math.round(metrics.marketCap).toLocaleString("fr-FR")} $`,
-      `Liq ${Math.round(metrics.liquidityUsd).toLocaleString("fr-FR")} $`,
-      `Vol24h ${Math.round(metrics.volume24h).toLocaleString("fr-FR")} $`,
-      `Acheteurs 1h ${Math.round(metrics.buyers1h)}`,
-      `Var 1h ${metrics.priceChange1h.toFixed(1)} %`,
-      token.mint_address,
-    ].join(" · ");
+    if (sameLevel || (cooldownActive && !priorityAfterSignal)) continue;
+
+    const message = buildAlertMessage({
+      symbol,
+      name: metrics.name ?? token.name,
+      mint: token.mint_address,
+      scoring,
+      metrics,
+      level: scoring.level,
+    });
 
     await supabaseAdmin.from("alerts").insert({
       token_id: token.id,
       token_symbol: symbol,
-      level,
-      score: scoring.score,
+      level: scoring.level === "priority" ? "critical" : "signal",
+      score: scoring.score ?? 0,
       message,
       channel: settings.botActive ? "telegram" : "dashboard",
       is_simulated: false,
@@ -195,10 +290,14 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
 
     await supabaseAdmin
       .from("tokens")
-      .update({ alerted_score: scoring.score })
+      .update({
+        alert_level: scoring.level,
+        alerted_score: scoring.score ?? 0,
+        last_alert_at: now.toISOString(),
+      })
       .eq("id", token.id);
 
-    // Le bot en pause n'envoie rien sur Telegram (alerte gardée en historique).
+    // Bot en pause : l'alerte reste en historique, rien n'est envoyé.
     if (!settings.botActive) {
       result.telegramSkipped = "Bot en pause — alerte enregistrée sans envoi Telegram.";
       continue;
@@ -206,8 +305,8 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
 
     const sent = await sendAlertTelegram({
       symbol,
-      score: scoring.score,
-      level,
+      score: scoring.score ?? 0,
+      level: scoring.level === "priority" ? "critical" : "signal",
       message,
       simulated: false,
     });

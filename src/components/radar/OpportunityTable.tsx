@@ -1,5 +1,5 @@
 import { formatAge, formatUsd } from "@/lib/radar-service";
-import type { TokenRow } from "@/lib/radar-types";
+import { tokenLevel, type TokenRow } from "@/lib/radar-types";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
 
 export function OpportunityTable({
@@ -82,13 +82,21 @@ export function OpportunityTable({
                   {token.smart_wallet_count}
                 </td>
                 <td className="px-3 py-3 text-right">
-                  <ScoreBadge score={token.score} />
+                  <ScoreBadge
+                    score={token.score}
+                    unavailable={!token.is_simulated && !token.data_sufficient}
+                  />
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-muted-foreground tabular-nums">
                   {formatAge(token.launched_at)}
                 </td>
                 <td className="px-5 py-3">
-                  <StatusPill status={token.status} />
+                  <div className="flex flex-col gap-1">
+                    <StatusPill status={token.status} />
+                    <span className="text-[10px] text-muted-foreground">
+                      {tokenLevel(token).label}
+                    </span>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -115,7 +123,10 @@ export function OpportunityTable({
                   </p>
                   <p className="text-xs text-muted-foreground">{token.name}</p>
                 </div>
-                <ScoreBadge score={token.score} />
+                <ScoreBadge
+                  score={token.score}
+                  unavailable={!token.is_simulated && !token.data_sufficient}
+                />
               </div>
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                 <div className="flex justify-between">
@@ -135,8 +146,9 @@ export function OpportunityTable({
                   <dd className="font-mono">{formatAge(token.launched_at)}</dd>
                 </div>
               </dl>
-              <div className="mt-3">
+              <div className="mt-3 flex items-center gap-2">
                 <StatusPill status={token.status} />
+                <span className="text-[10px] text-muted-foreground">{tokenLevel(token).label}</span>
               </div>
             </button>
           </li>
