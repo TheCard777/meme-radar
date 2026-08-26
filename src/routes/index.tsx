@@ -7,6 +7,7 @@ import { TokenDetailSheet } from "@/components/radar/TokenDetailSheet";
 import { TelegramPanel } from "@/components/radar/TelegramPanel";
 import { SystemStatus } from "@/components/radar/SystemStatus";
 import { CollectorPanel } from "@/components/radar/CollectorPanel";
+import { ScoringPanel } from "@/components/radar/ScoringPanel";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAlerts, useBotSettings, useSmartWallets, useTokens } from "@/lib/radar-hooks";
@@ -65,6 +66,7 @@ function Dashboard() {
             <div className="space-y-6">
               <SystemStatus />
               <CollectorPanel />
+              <ScoringPanel tokens={tokens.data ?? []} />
               <TelegramPanel />
               <section aria-label="Statut du scanner" className="panel p-4 sm:p-5">
                 <h2 className="text-base font-semibold">Statut du scanner</h2>
