@@ -79,6 +79,7 @@ export function buildAlertMessage(params: {
   scoring: ScoringResult;
   metrics: MarketMetrics | undefined;
   level: "signal" | "priority";
+  smartWallets?: number | null;
 }): string {
   const { scoring, metrics } = params;
   const top = scoring.subScores
@@ -90,7 +91,9 @@ export function buildAlertMessage(params: {
 
   const lines = [
     `${params.name} (${params.symbol})`,
-    `Score ${scoring.score}/100 — fiabilité ${Math.round(scoring.confidence * 100)} %`,
+    `${params.level === "priority" ? "PRIORITÉ" : "SIGNAL"} — score ${scoring.score}/100`,
+    `Fiabilité des données : ${Math.round(scoring.confidence * 100)} %`,
+    `Smart wallets qualifiés : ${params.smartWallets ?? "inconnu"}`,
     "",
     "Sous-scores principaux :",
     top || "• aucun sous-score disponible",
@@ -99,6 +102,7 @@ export function buildAlertMessage(params: {
     `Liquidité : ${fmtUsd(metrics?.liquidityUsd ?? null)}`,
     `Volume 24h : ${fmtUsd(metrics?.volume24h ?? null)}`,
     `Acheteurs 1h : ${metrics?.buyers1h ?? "inconnu"}`,
+    `Volume 1h : ${fmtUsd(metrics?.volume1h ?? null)}`,
   ];
 
   if (scoring.missing.length > 0) {
@@ -254,6 +258,7 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       volume: metrics.volume24h ?? 0,
       buyers: Math.round(metrics.buyers1h ?? 0),
       score: scoring.score ?? 0,
+      price_usd: metrics.priceUsd ?? 0,
     });
 
     if (scoring.level !== "signal" && scoring.level !== "priority") continue;
@@ -275,6 +280,7 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       scoring,
       metrics,
       level: scoring.level,
+      smartWallets: token.smart_wallet_count > 0 ? token.smart_wallet_count : null,
     });
 
     await supabaseAdmin.from("alerts").insert({
@@ -285,6 +291,9 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       message,
       channel: settings.botActive ? "telegram" : "dashboard",
       is_simulated: false,
+      token_mint: token.mint_address,
+      price_usd_at_alert: metrics.priceUsd ?? null,
+      market_cap_at_alert: metrics.marketCap ?? null,
     });
     result.alertsCreated += 1;
 
