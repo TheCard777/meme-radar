@@ -61,6 +61,13 @@ export async function fetchSmartWalletAlerts(): Promise<
   return data ?? [];
 }
 
+/**
+ * Affichage seulement : on ne charge que les 1000 opportunités les plus
+ * pertinentes (score décroissant, puis token le plus récent). L'historique
+ * complet reste intégralement conservé en base — rien n'est supprimé.
+ */
+export const RADAR_DISPLAY_LIMIT = 1000;
+
 export async function fetchTokens(): Promise<TokenRow[]> {
   const { data, error } = await supabase
     .from("tokens")
@@ -68,10 +75,22 @@ export async function fetchTokens(): Promise<TokenRow[]> {
     .eq("is_simulated", false)
     // Classement : meilleur score d'abord, puis le token le plus récent.
     .order("score", { ascending: false })
-    .order("launched_at", { ascending: false });
+    .order("launched_at", { ascending: false })
+    .limit(RADAR_DISPLAY_LIMIT);
   if (error) throw error;
   return (data ?? []) as unknown as TokenRow[];
 }
+
+/** Nombre total de tokens réels conservés en base (au-delà de l'affichage). */
+export async function fetchTotalRealTokenCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from("tokens")
+    .select("id", { count: "exact", head: true })
+    .eq("is_simulated", false);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 
 export async function fetchSmartWallets(): Promise<SmartWallet[]> {
   const { data, error } = await supabase
