@@ -372,14 +372,26 @@ async function handlePost(action: string, body: unknown): Promise<Response> {
       // Lovable Cloud, là où les secrets vivent. Le worker ne fait que déclencher.
       const { analyzeRealWallets } = await import("@/lib/wallets.server");
       const { enrichRealTokens } = await import("@/lib/enrichment.server");
+      const { detectSmartWalletEntries } = await import("@/lib/smart-wallet-alerts.server");
       const wallets = await analyzeRealWallets();
       const enrichment = await enrichRealTokens();
+      // Alertes « Smart Wallet Entry » : jamais bloquantes pour le cycle.
+      let smartWalletAlerts: Awaited<ReturnType<typeof detectSmartWalletEntries>> | null = null;
+      try {
+        smartWalletAlerts = await detectSmartWalletEntries();
+      } catch (error) {
+        log("smart_wallet_alerts_error", {
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
       log("enrich_cycle", {
         tokensAnalyzed: wallets.tokensAnalyzed,
         enriched: enrichment.enriched,
         alertsCreated: enrichment.alertsCreated,
+        smartWalletAlertsCreated: smartWalletAlerts?.created ?? 0,
+        smartWalletTelegramSent: smartWalletAlerts?.telegramSent ?? 0,
       });
-      return Response.json({ ok: true, wallets, ...enrichment });
+      return Response.json({ ok: true, wallets, smartWalletAlerts, ...enrichment });
     }
 
     default:
