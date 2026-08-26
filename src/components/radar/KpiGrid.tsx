@@ -30,11 +30,13 @@ export function KpiGrid({
   alerts,
   wallets,
   demoArchived = 0,
+  totalTokens,
 }: {
   tokens: TokenRow[];
   alerts: AlertRow[];
   wallets: SmartWallet[];
   demoArchived?: number;
+  totalTokens?: number;
 }) {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
