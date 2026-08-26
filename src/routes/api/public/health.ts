@@ -39,7 +39,10 @@ export const Route = createFileRoute("/api/public/health")({
             scanner: {
               state: scanner.state,
               websocket: scanner.websocket,
+              websocketState: scanner.websocketState,
               latencyMs: scanner.latencyMs,
+              slot: scanner.slot,
+              version: scanner.version,
               demoData: scanner.demoData,
             },
             telegram: {
