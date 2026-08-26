@@ -58,6 +58,7 @@ function Dashboard() {
           <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
             <OpportunityTable tokens={tokens.data ?? []} onSelect={setSelected} />
             <div className="space-y-6">
+              <SystemStatus />
               <TelegramPanel connected={settings.data?.telegram_connected ?? false} />
               <section aria-label="Statut du scanner" className="panel p-4 sm:p-5">
                 <h2 className="text-base font-semibold">Statut du scanner</h2>
@@ -80,6 +81,7 @@ function Dashboard() {
                   </div>
                 </dl>
               </section>
+
             </div>
           </div>
         </div>
