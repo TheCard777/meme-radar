@@ -38,6 +38,10 @@ export interface EnrichmentResult {
   telegramSent: number;
   telegramSkipped: string | null;
   topScore: number | null;
+  /** Alertes « Early Opportunity » créées pendant ce cycle. */
+  earlyOpportunitiesCreated: number;
+  /** Messages Telegram « Early Opportunity » réellement envoyés. */
+  earlyOpportunitiesTelegramSent: number;
   errors: string[];
   tradingEnabled: false;
 }
