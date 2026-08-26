@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   fetchAlerts,
@@ -9,8 +10,8 @@ import {
   fetchDemoArchivedCount,
   fetchWalletEntries,
   fetchSnapshots,
-  updateBotSettings,
 } from "./radar-service";
+import { updateBotSettingsServer } from "./settings.functions";
 import type { BotStatus, SignalCategories } from "./radar-types";
 
 export const useBotSettings = () =>
@@ -45,9 +46,10 @@ type SettingsPatch = Partial<{
 
 export function useUpdateSettings() {
   const qc = useQueryClient();
+  const updateSettings = useServerFn(updateBotSettingsServer);
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: SettingsPatch }) =>
-      updateBotSettings(id, patch),
+      updateSettings({ data: { id, patch } }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["bot_settings"] });
     },

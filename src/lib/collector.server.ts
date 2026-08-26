@@ -112,7 +112,8 @@ export async function getCollectorStatus(): Promise<CollectorStatus> {
 export async function setCollectorDesiredState(
   desired: "stopped" | "running",
 ): Promise<CollectorStatus> {
-  const { error } = await serviceClient()
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin
     .from("collector_state")
     .update({ desired_state: desired })
     .eq("singleton", true);
