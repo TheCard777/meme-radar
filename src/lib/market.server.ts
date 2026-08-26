@@ -86,6 +86,8 @@ export async function fetchMarketMetrics(
       liquidityUsd,
       volume24h: num(pair.volume?.h24),
       volume1h: num(pair.volume?.h1),
+      volume5m: num(pair.volume?.m5),
+
       buyers1h: num(pair.txns?.h1?.buys),
       priceChange1h: num(pair.priceChange?.h1),
       dex: pair.dexId ?? null,
