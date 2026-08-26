@@ -34,6 +34,14 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "Scoring des nouveaux memecoins Solana, smart wallets et alertes en simulation.",
       },
+      {
+        property: "og:image",
+        content: "https://token-spotter-ai.lovable.app/__l5e/assets-v1/9ad2a5c5-e1c0-4963-870d-73bce005faf2/meme-radar-logo.png",
+      },
+      {
+        name: "twitter:image",
+        content: "https://token-spotter-ai.lovable.app/__l5e/assets-v1/9ad2a5c5-e1c0-4963-870d-73bce005faf2/meme-radar-logo.png",
+      },
     ],
   }),
   component: Dashboard,
