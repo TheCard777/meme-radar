@@ -68,6 +68,35 @@ export async function getTelegramStatus(): Promise<TelegramStatus> {
   }
 }
 
+/**
+ * Envoi brut d'un message déjà formaté (utilisé par les alertes Smart Wallet).
+ * Ne lève jamais : renvoie toujours un résultat explicite.
+ */
+export async function sendRawTelegramMessage(
+  text: string,
+): Promise<{ sent: boolean; reason?: string }> {
+  const config = readTelegramConfig();
+  if (!config || !config.chatId) {
+    return { sent: false, reason: "Secrets Telegram non configurés" };
+  }
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${config.token}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        chat_id: config.chatId,
+        text,
+        disable_web_page_preview: true,
+      }),
+    });
+    const payload = (await response.json()) as { ok: boolean; description?: string };
+    if (!payload.ok) return { sent: false, reason: payload.description ?? "Envoi refusé" };
+    return { sent: true };
+  } catch (error) {
+    return { sent: false, reason: error instanceof Error ? error.message : "Erreur réseau" };
+  }
+}
+
 export interface AlertPayload {
   symbol: string;
   score: number;
