@@ -12,12 +12,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { computeScore, tokenStatusForLevel, type ScoringResult } from "./scoring";
-import {
-  fetchHolderConcentration,
-  fetchMarketMetrics,
-  MARKET_BATCH_SIZE,
-  type MarketMetrics,
-} from "./market.server";
+import { fetchMarketMetrics, MARKET_BATCH_SIZE, type MarketMetrics } from "./market.server";
 import { sendAlertTelegram } from "./telegram.server";
 import {
   matchesEarlyOpportunity,
@@ -25,6 +20,8 @@ import {
   recordEarlyOpportunity,
   type EarlyOpportunityConfig,
 } from "./early-opportunity.server";
+import { assessTokenRisk, type TokenRiskAssessment } from "./risk.server";
+import { summarizeRisk } from "./risk-scoring";
 
 /** Délai minimal entre deux alertes pour un même token. */
 export const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
@@ -55,6 +52,9 @@ interface TokenRecord {
   smart_wallet_count: number;
   alert_level: string | null;
   last_alert_at: string | null;
+  creator_address: string | null;
+  creator_previous_tokens: number | null;
+  coordination_flags: unknown;
 }
 
 interface Settings {
@@ -116,6 +116,8 @@ export function buildAlertMessage(params: {
   metrics: MarketMetrics | undefined;
   level: "signal" | "priority";
   smartWallets?: number | null;
+  /** Risque mesuré (facultatif) : ajouté au message sans bloquer l'alerte. */
+  risk?: TokenRiskAssessment["risk"] | null;
 }): string {
   const { scoring, metrics } = params;
   const top = scoring.subScores
@@ -145,6 +147,20 @@ export function buildAlertMessage(params: {
     lines.push(`Données manquantes : ${scoring.missing.join(", ")}`);
   }
 
+  // Risque : informatif, jamais bloquant. Absent si non évaluable.
+  if (params.risk && params.risk.score !== null) {
+    lines.push(
+      "",
+      `Risque : ${params.risk.score}/100 (${params.risk.level}) — fiabilité ${Math.round(params.risk.confidence * 100)} %`,
+      ...summarizeRisk(params.risk).map((line) => `• ${line}`),
+    );
+    if (params.risk.missing.length > 0) {
+      lines.push(`Risque non mesuré : ${params.risk.missing.join(", ")}`);
+    }
+  } else if (params.risk) {
+    lines.push("", "Risque : non évaluable (données on-chain insuffisantes).");
+  }
+
   lines.push(
     "",
     `Horodatage : ${new Date().toISOString()}`,
@@ -167,7 +183,7 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
   const { data, error } = await supabaseAdmin
     .from("tokens")
     .select(
-      "id, symbol, name, mint_address, launched_at, smart_wallet_count, alert_level, last_alert_at",
+      "id, symbol, name, mint_address, launched_at, smart_wallet_count, alert_level, last_alert_at, creator_address, creator_previous_tokens, coordination_flags",
     )
     .eq("is_simulated", false)
     .order("last_enriched_at", { ascending: true, nullsFirst: true })
@@ -210,10 +226,28 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       (now.getTime() - new Date(token.launched_at).getTime()) / 60_000,
     );
 
-    // Concentration on-chain uniquement pour les tokens ayant un marché.
-    const holdersTop10Share = metrics
-      ? await fetchHolderConcentration(token.mint_address)
-      : null;
+    // Analyse de risque on-chain (holders nets, créateur, LP, coordination),
+    // uniquement pour les tokens ayant réellement un marché.
+    let assessment: TokenRiskAssessment | null = null;
+    if (metrics) {
+      try {
+        assessment = await assessTokenRisk({
+          tokenId: token.id,
+          mint: token.mint_address,
+          launchedAt: token.launched_at,
+          pairUrl: metrics.pairUrl ?? null,
+          knownCreator: token.creator_address,
+          knownCreatorPreviousTokens: token.creator_previous_tokens,
+          // Vérification du financeur SOL une seule fois par token (coût RPC).
+          checkFunders: token.coordination_flags === null,
+        });
+      } catch (riskError) {
+        errors.push(
+          `risk ${token.mint_address}: ${riskError instanceof Error ? riskError.message : String(riskError)}`,
+        );
+      }
+    }
+    const holdersTop10Share = assessment?.holders.top10Share ?? null;
 
     const scoring = computeScore(
       {
@@ -270,6 +304,30 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
         holders_top10_share: holdersTop10Share,
         status: tokenStatusForLevel(scoring.level),
         last_enriched_at: now.toISOString(),
+        // Risque : champs séparés du score d'opportunité. `null` = non mesuré.
+        ...(assessment
+          ? {
+              risk_score: assessment.risk.score,
+              risk_level: assessment.risk.level,
+              risk_confidence: assessment.risk.confidence,
+              risk_factors: assessment.risk.factors as unknown as never,
+              holders_top20_share: assessment.holders.top20Share,
+              holders_excluded: {
+                excluded: assessment.holders.excluded,
+                accountsConsidered: assessment.holders.accountsConsidered,
+                notes: assessment.holders.notes,
+              } as unknown as never,
+              creator_address: assessment.creatorAddress,
+              creator_share: assessment.holders.creatorShare,
+              creator_previous_tokens: assessment.creatorPreviousTokens,
+              lp_status: assessment.lpStatus,
+              coordination_flags: {
+                ...assessment.coordination,
+                lpNotes: assessment.lpNotes,
+                liquidityDropRatio: assessment.liquidityDropRatio,
+              } as unknown as never,
+            }
+          : {}),
       })
       .eq("id", token.id);
 
@@ -355,6 +413,7 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       metrics,
       level: scoring.level,
       smartWallets: token.smart_wallet_count > 0 ? token.smart_wallet_count : null,
+      risk: assessment?.risk ?? null,
     });
 
     await supabaseAdmin.from("alerts").insert({

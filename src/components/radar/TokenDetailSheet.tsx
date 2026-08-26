@@ -1,8 +1,9 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
 import { formatAge, formatUsd, shortAddress } from "@/lib/radar-service";
-import { tokenLevel, type TokenRow } from "@/lib/radar-types";
+import { LP_STATUS_LABELS, tokenLevel, type TokenRow } from "@/lib/radar-types";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
+import { RiskBadge } from "./RiskBadge";
 
 function metricLabel(value: number | null | undefined, format: (v: number) => string): string {
   return value === null || value === undefined ? "Inconnu" : format(value);
