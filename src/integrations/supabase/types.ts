@@ -76,6 +76,8 @@ export type Database = {
           last_scan_at: string | null
           signal_categories: Json
           singleton: boolean
+          smart_wallet_alert_threshold: number
+          smart_wallet_alerts_enabled: boolean
           status: string
           telegram_connected: boolean
           telegram_threshold: number
@@ -89,6 +91,8 @@ export type Database = {
           last_scan_at?: string | null
           signal_categories?: Json
           singleton?: boolean
+          smart_wallet_alert_threshold?: number
+          smart_wallet_alerts_enabled?: boolean
           status?: string
           telegram_connected?: boolean
           telegram_threshold?: number
@@ -102,6 +106,8 @@ export type Database = {
           last_scan_at?: string | null
           signal_categories?: Json
           singleton?: boolean
+          smart_wallet_alert_threshold?: number
+          smart_wallet_alerts_enabled?: boolean
           status?: string
           telegram_connected?: boolean
           telegram_threshold?: number
@@ -177,6 +183,59 @@ export type Database = {
           table_name?: string
         }
         Relationships: []
+      }
+      smart_wallet_alerts: {
+        Row: {
+          created_at: string
+          first_entry_detected_at: string
+          id: string
+          telegram_error: string | null
+          telegram_sent: boolean
+          token_id: string | null
+          token_mint: string
+          token_symbol: string | null
+          transaction_signature: string | null
+          updated_at: string
+          wallet_address: string
+          wallet_score: number | null
+        }
+        Insert: {
+          created_at?: string
+          first_entry_detected_at?: string
+          id?: string
+          telegram_error?: string | null
+          telegram_sent?: boolean
+          token_id?: string | null
+          token_mint: string
+          token_symbol?: string | null
+          transaction_signature?: string | null
+          updated_at?: string
+          wallet_address: string
+          wallet_score?: number | null
+        }
+        Update: {
+          created_at?: string
+          first_entry_detected_at?: string
+          id?: string
+          telegram_error?: string | null
+          telegram_sent?: boolean
+          token_id?: string | null
+          token_mint?: string
+          token_symbol?: string | null
+          transaction_signature?: string | null
+          updated_at?: string
+          wallet_address?: string
+          wallet_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_wallet_alerts_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       smart_wallets: {
         Row: {
