@@ -16,6 +16,7 @@ import {
   useDemoArchived,
   useSmartWallets,
   useTokens,
+  useTotalRealTokenCount,
 } from "@/lib/radar-hooks";
 import type { TokenRow } from "@/lib/radar-types";
 
@@ -45,8 +46,10 @@ function Dashboard() {
   const wallets = useSmartWallets();
   const settings = useBotSettings();
   const demoArchived = useDemoArchived();
+  const totalTokens = useTotalRealTokenCount();
 
-  const loading = tokens.isLoading || alerts.isLoading || wallets.isLoading;
+  const loading =
+    tokens.isLoading || alerts.isLoading || wallets.isLoading || totalTokens.isLoading;
   const realTokenCount = (tokens.data ?? []).length;
 
   return (
@@ -66,6 +69,7 @@ function Dashboard() {
             alerts={alerts.data ?? []}
             wallets={wallets.data ?? []}
             demoArchived={demoArchived.data ?? 0}
+            totalTokens={totalTokens.data ?? realTokenCount}
           />
 
           <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">

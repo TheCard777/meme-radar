@@ -4,13 +4,14 @@ import { toast } from "sonner";
 import {
   fetchAlerts,
   fetchBotSettings,
+  fetchDemoArchivedCount,
+  fetchSmartWalletAlerts,
   fetchSmartWallets,
   fetchTokens,
-  fetchWalletTrades,
-  fetchDemoArchivedCount,
+  fetchTotalRealTokenCount,
   fetchWalletEntries,
+  fetchWalletTrades,
   fetchSnapshots,
-  fetchSmartWalletAlerts,
 } from "./radar-service";
 import { updateBotSettingsServer } from "./settings.functions";
 import type { BotStatus, SignalCategories } from "./radar-types";
@@ -19,6 +20,9 @@ export const useBotSettings = () =>
   useQuery({ queryKey: ["bot_settings"], queryFn: fetchBotSettings });
 
 export const useTokens = () => useQuery({ queryKey: ["tokens"], queryFn: fetchTokens });
+
+export const useTotalRealTokenCount = () =>
+  useQuery({ queryKey: ["tokens", "total_real_count"], queryFn: fetchTotalRealTokenCount });
 
 export const useSmartWallets = () =>
   useQuery({ queryKey: ["smart_wallets"], queryFn: fetchSmartWallets });
