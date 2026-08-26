@@ -14,7 +14,268 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alerts: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          is_simulated: boolean
+          level: string
+          message: string
+          score: number
+          token_id: string | null
+          token_symbol: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          level?: string
+          message: string
+          score?: number
+          token_id?: string | null
+          token_symbol: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          level?: string
+          message?: string
+          score?: number
+          token_id?: string | null
+          token_symbol?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bot_settings: {
+        Row: {
+          created_at: string
+          critical_threshold: number
+          demo_mode: boolean
+          id: string
+          last_scan_at: string | null
+          signal_categories: Json
+          singleton: boolean
+          status: string
+          telegram_connected: boolean
+          telegram_threshold: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          critical_threshold?: number
+          demo_mode?: boolean
+          id?: string
+          last_scan_at?: string | null
+          signal_categories?: Json
+          singleton?: boolean
+          status?: string
+          telegram_connected?: boolean
+          telegram_threshold?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          critical_threshold?: number
+          demo_mode?: boolean
+          id?: string
+          last_scan_at?: string | null
+          signal_categories?: Json
+          singleton?: boolean
+          status?: string
+          telegram_connected?: boolean
+          telegram_threshold?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      smart_wallets: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          is_simulated: boolean
+          label: string | null
+          last_active_at: string
+          simulated_pnl: number
+          trade_count: number
+          win_rate: number
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          label?: string | null
+          last_active_at?: string
+          simulated_pnl?: number
+          trade_count?: number
+          win_rate?: number
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          label?: string | null
+          last_active_at?: string
+          simulated_pnl?: number
+          trade_count?: number
+          win_rate?: number
+        }
+        Relationships: []
+      }
+      token_snapshots: {
+        Row: {
+          buyers: number
+          captured_at: string
+          id: string
+          market_cap: number
+          score: number
+          token_id: string
+          volume: number
+        }
+        Insert: {
+          buyers?: number
+          captured_at?: string
+          id?: string
+          market_cap?: number
+          score?: number
+          token_id: string
+          volume?: number
+        }
+        Update: {
+          buyers?: number
+          captured_at?: string
+          id?: string
+          market_cap?: number
+          score?: number
+          token_id?: string
+          volume?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_snapshots_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tokens: {
+        Row: {
+          created_at: string
+          id: string
+          is_simulated: boolean
+          launched_at: string
+          market_cap: number
+          mint_address: string
+          name: string
+          new_buyers: number
+          score: number
+          score_factors: Json
+          smart_wallet_count: number
+          status: string
+          symbol: string
+          updated_at: string
+          volume_24h: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          launched_at?: string
+          market_cap?: number
+          mint_address: string
+          name: string
+          new_buyers?: number
+          score?: number
+          score_factors?: Json
+          smart_wallet_count?: number
+          status?: string
+          symbol: string
+          updated_at?: string
+          volume_24h?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          launched_at?: string
+          market_cap?: number
+          mint_address?: string
+          name?: string
+          new_buyers?: number
+          score?: number
+          score_factors?: Json
+          smart_wallet_count?: number
+          status?: string
+          symbol?: string
+          updated_at?: string
+          volume_24h?: number
+        }
+        Relationships: []
+      }
+      wallet_trades: {
+        Row: {
+          amount_sol: number
+          id: string
+          is_simulated: boolean
+          side: string
+          token_id: string | null
+          token_symbol: string
+          traded_at: string
+          wallet_id: string
+        }
+        Insert: {
+          amount_sol?: number
+          id?: string
+          is_simulated?: boolean
+          side?: string
+          token_id?: string | null
+          token_symbol: string
+          traded_at?: string
+          wallet_id: string
+        }
+        Update: {
+          amount_sol?: number
+          id?: string
+          is_simulated?: boolean
+          side?: string
+          token_id?: string | null
+          token_symbol?: string
+          traded_at?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_trades_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_trades_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "smart_wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
