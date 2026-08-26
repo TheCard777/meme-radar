@@ -30,6 +30,9 @@ export function TokenDetailSheet({
               <SheetTitle className="flex items-center gap-3">
                 <span>${token.symbol}</span>
                 <ScoreBadge score={token.score} unavailable={insufficient} />
+                {!token.is_simulated ? (
+                  <RiskBadge score={token.risk_score} level={token.risk_level} compact />
+                ) : null}
               </SheetTitle>
               <SheetDescription>
                 {token.name} · <span className="font-mono">{shortAddress(token.mint_address)}</span>
