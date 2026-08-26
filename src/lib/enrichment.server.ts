@@ -300,6 +300,37 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       price_usd: metrics.priceUsd ?? 0,
     });
 
+    // ---- Alerte « Early Opportunity » (indépendante du niveau SIGNAL/PRIORITÉ)
+    // Traction précoce : âge <= 2 h, 60-100 acheteurs, score >= 65, liquidité min.
+    if (scoring.score !== null) {
+      const buyers = Math.max(
+        Math.round(metrics.buyers1h ?? 0),
+        onChainBuyers.get(token.id) ?? 0,
+      );
+      const candidate = {
+        tokenId: token.id,
+        mint: token.mint_address,
+        symbol,
+        name: metrics.name ?? token.name,
+        score: scoring.score,
+        confidence: scoring.confidence,
+        buyers,
+        liquidityUsd: metrics.liquidityUsd ?? null,
+        marketCap: metrics.marketCap ?? null,
+        volume24h: metrics.volume24h ?? null,
+        ageMinutes,
+        pairUrl: metrics.pairUrl ?? null,
+      };
+      if (matchesEarlyOpportunity(candidate, settings.earlyOpportunity)) {
+        const outcome = await recordEarlyOpportunity(candidate, settings.earlyOpportunity, {
+          sendTelegram: settings.botActive,
+        });
+        if (outcome.created) result.earlyOpportunitiesCreated += 1;
+        if (outcome.telegramSent) result.earlyOpportunitiesTelegramSent += 1;
+        if (outcome.error) errors.push(`early-opportunity ${token.mint_address}: ${outcome.error}`);
+      }
+    }
+
     if (scoring.level !== "signal" && scoring.level !== "priority") continue;
 
     // Anti-spam : une seule alerte par token et par niveau + cooldown.
