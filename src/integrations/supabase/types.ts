@@ -227,23 +227,30 @@ export type Database = {
       }
       tokens: {
         Row: {
+          alert_level: string
           alerted_score: number
           created_at: string
+          data_sufficient: boolean
           detection_signature: string | null
           detection_source: string
+          holders_top10_share: number | null
           id: string
           is_simulated: boolean
+          last_alert_at: string | null
           last_enriched_at: string | null
           launched_at: string
           liquidity_usd: number
           market_cap: number
+          market_metrics: Json
           market_source: string
           mint_address: string
+          missing_metrics: Json
           name: string
           new_buyers: number
           price_change_1h: number
           price_usd: number
           score: number
+          score_confidence: number
           score_factors: Json
           smart_wallet_count: number
           status: string
@@ -253,23 +260,30 @@ export type Database = {
           volume_24h: number
         }
         Insert: {
+          alert_level?: string
           alerted_score?: number
           created_at?: string
+          data_sufficient?: boolean
           detection_signature?: string | null
           detection_source?: string
+          holders_top10_share?: number | null
           id?: string
           is_simulated?: boolean
+          last_alert_at?: string | null
           last_enriched_at?: string | null
           launched_at?: string
           liquidity_usd?: number
           market_cap?: number
+          market_metrics?: Json
           market_source?: string
           mint_address: string
+          missing_metrics?: Json
           name: string
           new_buyers?: number
           price_change_1h?: number
           price_usd?: number
           score?: number
+          score_confidence?: number
           score_factors?: Json
           smart_wallet_count?: number
           status?: string
@@ -279,23 +293,30 @@ export type Database = {
           volume_24h?: number
         }
         Update: {
+          alert_level?: string
           alerted_score?: number
           created_at?: string
+          data_sufficient?: boolean
           detection_signature?: string | null
           detection_source?: string
+          holders_top10_share?: number | null
           id?: string
           is_simulated?: boolean
+          last_alert_at?: string | null
           last_enriched_at?: string | null
           launched_at?: string
           liquidity_usd?: number
           market_cap?: number
+          market_metrics?: Json
           market_source?: string
           mint_address?: string
+          missing_metrics?: Json
           name?: string
           new_buyers?: number
           price_change_1h?: number
           price_usd?: number
           score?: number
+          score_confidence?: number
           score_factors?: Json
           smart_wallet_count?: number
           status?: string
