@@ -133,10 +133,15 @@ export function OpportunityTable({
                   </p>
                   <p className="text-xs text-muted-foreground">{token.name}</p>
                 </div>
-                <ScoreBadge
-                  score={token.score}
-                  unavailable={!token.is_simulated && !token.data_sufficient}
-                />
+                <div className="flex flex-col items-end gap-1">
+                  <ScoreBadge
+                    score={token.score}
+                    unavailable={!token.is_simulated && !token.data_sufficient}
+                  />
+                  {!token.is_simulated ? (
+                    <RiskBadge score={token.risk_score} level={token.risk_level} compact />
+                  ) : null}
+                </div>
               </div>
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                 <div className="flex justify-between">
