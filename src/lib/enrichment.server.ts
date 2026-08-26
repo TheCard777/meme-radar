@@ -300,9 +300,10 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       price_usd: metrics.priceUsd ?? 0,
     });
 
-    // ---- Alerte « Early Opportunity » (indépendante du niveau SIGNAL/PRIORITÉ)
-    // Traction précoce : âge <= 2 h, 60-100 acheteurs, score >= 65, liquidité min.
-    if (scoring.score !== null) {
+    // ---- Alerte « Early Opportunity » (indépendante du score et du niveau)
+    // Traction précoce : âge <= 2 h, 60-100 acheteurs, liquidité + volume 1h
+    // minimums, accélération >= 2x lorsqu'elle est réellement mesurable.
+    {
       const buyers = Math.max(
         Math.round(metrics.buyers1h ?? 0),
         onChainBuyers.get(token.id) ?? 0,
@@ -318,6 +319,8 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
         liquidityUsd: metrics.liquidityUsd ?? null,
         marketCap: metrics.marketCap ?? null,
         volume24h: metrics.volume24h ?? null,
+        volume1h: metrics.volume1h ?? null,
+        volume5m: metrics.volume5m ?? null,
         ageMinutes,
         pairUrl: metrics.pairUrl ?? null,
       };
@@ -330,6 +333,7 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
         if (outcome.error) errors.push(`early-opportunity ${token.mint_address}: ${outcome.error}`);
       }
     }
+
 
     if (scoring.level !== "signal" && scoring.level !== "priority") continue;
 
