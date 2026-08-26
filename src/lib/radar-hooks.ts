@@ -10,6 +10,7 @@ import {
   fetchDemoArchivedCount,
   fetchWalletEntries,
   fetchSnapshots,
+  fetchSmartWalletAlerts,
 } from "./radar-service";
 import { updateBotSettingsServer } from "./settings.functions";
 import type { BotStatus, SignalCategories } from "./radar-types";
@@ -36,12 +37,17 @@ export const useSnapshots = () =>
 
 export const useAlerts = () => useQuery({ queryKey: ["alerts"], queryFn: fetchAlerts });
 
+export const useSmartWalletAlerts = () =>
+  useQuery({ queryKey: ["smart_wallet_alerts"], queryFn: fetchSmartWalletAlerts });
+
 type SettingsPatch = Partial<{
   status: BotStatus;
   telegram_threshold: number;
   critical_threshold: number;
   signal_categories: SignalCategories;
   last_scan_at: string;
+  smart_wallet_alerts_enabled: boolean;
+  smart_wallet_alert_threshold: number;
 }>;
 
 export function useUpdateSettings() {

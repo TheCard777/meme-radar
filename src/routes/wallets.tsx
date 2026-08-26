@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/radar/AppShell";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SmartWalletAlertsPanel } from "@/components/radar/SmartWalletAlertsPanel";
 import { useSmartWallets, useWalletEntries } from "@/lib/radar-hooks";
 import { formatAge, shortAddress } from "@/lib/radar-service";
 
@@ -41,6 +42,7 @@ function WalletsPage() {
       title="Smart Wallets"
       subtitle="Adresses publiques réelles observées on-chain — aucune identité hors chaîne, aucune exécution d’ordre."
     >
+      <SmartWalletAlertsPanel />
       {wallets.isLoading ? (
         <Skeleton className="h-96 w-full" />
       ) : rows.length === 0 ? (

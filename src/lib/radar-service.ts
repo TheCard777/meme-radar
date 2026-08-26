@@ -33,7 +33,32 @@ export async function fetchBotSettings(): Promise<BotSettings> {
     telegram_connected: data.telegram_connected,
     demo_mode: data.demo_mode,
     last_scan_at: data.last_scan_at,
+    smart_wallet_alerts_enabled: data.smart_wallet_alerts_enabled ?? true,
+    smart_wallet_alert_threshold: data.smart_wallet_alert_threshold ?? 75,
   };
+}
+
+/** Alertes « Smart Wallet Entry » déjà envoyées (anti-doublon persistant). */
+export async function fetchSmartWalletAlerts(): Promise<
+  Array<{
+    id: string;
+    wallet_address: string;
+    token_mint: string;
+    token_symbol: string | null;
+    wallet_score: number | null;
+    telegram_sent: boolean;
+    first_entry_detected_at: string;
+  }>
+> {
+  const { data, error } = await supabase
+    .from("smart_wallet_alerts")
+    .select(
+      "id, wallet_address, token_mint, token_symbol, wallet_score, telegram_sent, first_entry_detected_at",
+    )
+    .order("first_entry_detected_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function fetchTokens(): Promise<TokenRow[]> {
@@ -41,7 +66,9 @@ export async function fetchTokens(): Promise<TokenRow[]> {
     .from("tokens")
     .select("*")
     .eq("is_simulated", false)
-    .order("score", { ascending: false });
+    // Classement : meilleur score d'abord, puis le token le plus récent.
+    .order("score", { ascending: false })
+    .order("launched_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as unknown as TokenRow[];
 }
@@ -110,21 +137,4 @@ export async function fetchSnapshots(): Promise<SnapshotPoint[]> {
 
 /* ---------- helpers d'affichage ---------- */
 
-export function formatUsd(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
-  return `$${value.toFixed(0)}`;
-}
-
-export function formatAge(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const min = Math.max(0, Math.floor(diff / 60000));
-  if (min < 60) return `${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h} h`;
-  return `${Math.floor(h / 24)} j`;
-}
-
-export function shortAddress(address: string): string {
-  return `${address.slice(0, 4)}…${address.slice(-4)}`;
-}
+export { formatAge, formatUsd, shortAddress } from "./radar-service-format";
