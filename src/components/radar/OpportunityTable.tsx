@@ -1,6 +1,7 @@
 import { formatAge, formatUsd } from "@/lib/radar-service";
 import { tokenLevel, type TokenRow } from "@/lib/radar-types";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
+import { RiskBadge } from "./RiskBadge";
 
 export function OpportunityTable({
   tokens,
