@@ -26,9 +26,13 @@ export function AppShell({
       <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-xl border border-primary/40 bg-primary/10 text-primary">
-              <Activity className="size-5" aria-hidden="true" />
-            </span>
+            <img
+              src={logoAsset.url}
+              alt="Logo Meme Radar"
+              width={44}
+              height={48}
+              className="h-11 w-auto shrink-0 drop-shadow-[0_0_12px_oklch(0.78_0.19_155/0.35)]"
+            />
             <div>
               <p className="font-display text-lg font-semibold leading-tight text-gradient">
                 Meme Radar
