@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/radar/AppShell";
 import { TelegramPanel } from "@/components/radar/TelegramPanel";
 import { SystemStatus } from "@/components/radar/SystemStatus";
+import { CollectorPanel } from "@/components/radar/CollectorPanel";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -142,6 +143,7 @@ function SettingsPage() {
           </section>
 
           <SystemStatus />
+        <CollectorPanel />
 
           <div className="lg:col-span-2">
             <TelegramPanel />
