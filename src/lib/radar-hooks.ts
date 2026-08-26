@@ -4,13 +4,14 @@ import { toast } from "sonner";
 import {
   fetchAlerts,
   fetchBotSettings,
+  fetchDemoArchivedCount,
+  fetchSmartWalletAlerts,
   fetchSmartWallets,
   fetchTokens,
-  fetchWalletTrades,
-  fetchDemoArchivedCount,
+  fetchTotalRealTokenCount,
   fetchWalletEntries,
+  fetchWalletTrades,
   fetchSnapshots,
-  fetchSmartWalletAlerts,
 } from "./radar-service";
 import { updateBotSettingsServer } from "./settings.functions";
 import type { BotStatus, SignalCategories } from "./radar-types";
