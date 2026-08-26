@@ -21,11 +21,13 @@ export const DEFAULT_SMART_WALLET_ALERT_THRESHOLD = 75;
 /** Score minimum requis du smart wallet pour déclencher une alerte. */
 export const MIN_SMART_WALLET_SCORE = 65;
 /** Nombre minimum d'acheteurs réels du token au moment de l'alerte. */
-export const MIN_TOKEN_BUYERS = 100;
+export const MIN_TOKEN_BUYERS = 60;
 /** Rang d'entrée minimum : le #1 (créateur/acheteur initial) est exclu. */
 export const ALERT_RANK_MIN = 2;
 /** Rang d'entrée maximum retenu pour une alerte. */
 export const ALERT_RANK_MAX = 100;
+/** Âge maximum du token (minutes) : l'alerte doit rester « early entry ». */
+export const MAX_TOKEN_AGE_MINUTES = 120;
 /** Nombre maximal d'alertes envoyées par cycle (protection anti-flood). */
 const MAX_ALERTS_PER_CYCLE = 15;
 
