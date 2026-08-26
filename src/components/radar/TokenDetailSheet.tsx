@@ -1,8 +1,9 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
 import { formatAge, formatUsd, shortAddress } from "@/lib/radar-service";
-import { tokenLevel, type TokenRow } from "@/lib/radar-types";
+import { LP_STATUS_LABELS, tokenLevel, type TokenRow } from "@/lib/radar-types";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
+import { RiskBadge } from "./RiskBadge";
 
 function metricLabel(value: number | null | undefined, format: (v: number) => string): string {
   return value === null || value === undefined ? "Inconnu" : format(value);
@@ -29,6 +30,9 @@ export function TokenDetailSheet({
               <SheetTitle className="flex items-center gap-3">
                 <span>${token.symbol}</span>
                 <ScoreBadge score={token.score} unavailable={insufficient} />
+                {!token.is_simulated ? (
+                  <RiskBadge score={token.risk_score} level={token.risk_level} compact />
+                ) : null}
               </SheetTitle>
               <SheetDescription>
                 {token.name} · <span className="font-mono">{shortAddress(token.mint_address)}</span>
@@ -116,6 +120,90 @@ export function TokenDetailSheet({
                   );
                 })}
               </section>
+
+              {!token.is_simulated ? (
+                <section aria-label="Analyse du risque" className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">Risque (indépendant du score)</h3>
+                    <RiskBadge score={token.risk_score} level={token.risk_level} />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {token.risk_score === null
+                      ? "Risque non évaluable : trop peu de facteurs réellement mesurés sur ce token."
+                      : `Fiabilité du risque : ${Math.round((token.risk_confidence ?? 0) * 100)} % du poids réellement mesuré.`}
+                  </p>
+
+                  <dl className="grid grid-cols-2 gap-3">
+                    {[
+                      ["Top 20 holders (net)", metricLabel(token.holders_top20_share, (v) => `${(v * 100).toFixed(1)} %`)],
+                      ["Part créateur", metricLabel(token.creator_share, (v) => `${(v * 100).toFixed(2)} %`)],
+                      ["Statut LP", token.lp_status ? LP_STATUS_LABELS[token.lp_status] : "Inconnu"],
+                      [
+                        "Déploiements du créateur",
+                        token.creator_previous_tokens === null
+                          ? "Inconnu"
+                          : String(token.creator_previous_tokens),
+                      ],
+                      [
+                        "Achats quasi simultanés",
+                        metricLabel(token.coordination_flags?.simultaneousRatio ?? null, (v) => `${Math.round(v * 100)} %`),
+                      ],
+                      [
+                        "Financeur commun",
+                        metricLabel(token.coordination_flags?.sharedFunderRatio ?? null, (v) => `${Math.round(v * 100)} %`),
+                      ],
+                      [
+                        "Sniping observé",
+                        metricLabel(token.coordination_flags?.sniperRatio ?? null, (v) => `${Math.round(v * 100)} %`),
+                      ],
+                      [
+                        "Baisse de liquidité",
+                        metricLabel(token.coordination_flags?.liquidityDropRatio ?? null, (v) => `${Math.round(v * 100)} %`),
+                      ],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-lg border border-border bg-surface p-3">
+                        <dt className="text-xs text-muted-foreground">{label}</dt>
+                        <dd className="mt-1 font-mono text-sm">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+
+                  {(token.risk_factors ?? []).map((factor) => (
+                    <div key={factor.key}>
+                      <div className="flex items-center justify-between text-xs">
+                        <span>{factor.label}</span>
+                        <span className="font-mono text-muted-foreground">
+                          {factor.normalized === null ? "non mesuré" : `${factor.points}/${factor.weight}`}
+                        </span>
+                      </div>
+                      <Progress
+                        className="mt-1.5 h-2"
+                        value={factor.normalized === null ? 0 : Math.round(factor.normalized)}
+                      />
+                      <p className="mt-1 text-[11px] text-muted-foreground">{factor.detail}</p>
+                      <p className="text-[11px] text-muted-foreground/70">Source : {factor.source}</p>
+                    </div>
+                  ))}
+
+                  {token.creator_address ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      Créateur observé : <span className="font-mono">{shortAddress(token.creator_address)}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">Créateur non résolu.</p>
+                  )}
+
+                  {(token.holders_excluded?.notes ?? []).concat(
+                    token.coordination_flags?.notes ?? [],
+                    token.coordination_flags?.lpNotes ?? [],
+                  ).map((note) => (
+                    <p key={note} className="text-[11px] text-muted-foreground/70">
+                      {note}
+                    </p>
+                  ))}
+                </section>
+              ) : null}
+
 
               {missing.length > 0 ? (
                 <section aria-label="Données manquantes" className="space-y-2">

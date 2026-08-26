@@ -1,6 +1,7 @@
 import { formatAge, formatUsd } from "@/lib/radar-service";
 import { tokenLevel, type TokenRow } from "@/lib/radar-types";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
+import { RiskBadge } from "./RiskBadge";
 
 export function OpportunityTable({
   tokens,
@@ -43,6 +44,7 @@ export function OpportunityTable({
               <th scope="col" className="px-3 py-3 text-right font-medium">Nouv. acheteurs</th>
               <th scope="col" className="px-3 py-3 text-right font-medium">Smart wallets</th>
               <th scope="col" className="px-3 py-3 text-right font-medium">Score</th>
+              <th scope="col" className="px-3 py-3 text-right font-medium">Risque</th>
               <th scope="col" className="px-3 py-3 text-right font-medium">Âge</th>
               <th scope="col" className="px-5 py-3 font-medium">Statut</th>
             </tr>
@@ -87,6 +89,14 @@ export function OpportunityTable({
                     unavailable={!token.is_simulated && !token.data_sufficient}
                   />
                 </td>
+                <td className="px-3 py-3 text-right">
+                  {token.is_simulated ? (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  ) : (
+                    <RiskBadge score={token.risk_score} level={token.risk_level} compact />
+                  )}
+                </td>
+
                 <td className="px-3 py-3 text-right font-mono text-muted-foreground tabular-nums">
                   {formatAge(token.launched_at)}
                 </td>
@@ -123,10 +133,15 @@ export function OpportunityTable({
                   </p>
                   <p className="text-xs text-muted-foreground">{token.name}</p>
                 </div>
-                <ScoreBadge
-                  score={token.score}
-                  unavailable={!token.is_simulated && !token.data_sufficient}
-                />
+                <div className="flex flex-col items-end gap-1">
+                  <ScoreBadge
+                    score={token.score}
+                    unavailable={!token.is_simulated && !token.data_sufficient}
+                  />
+                  {!token.is_simulated ? (
+                    <RiskBadge score={token.risk_score} level={token.risk_level} compact />
+                  ) : null}
+                </div>
               </div>
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                 <div className="flex justify-between">

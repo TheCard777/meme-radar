@@ -86,6 +86,66 @@ export type TokenRow = {
   holders_top10_share: number | null;
   alert_level: "none" | "signal" | "priority" | string;
   last_alert_at: string | null;
+  /** RISQUE — totalement séparé du score d'opportunité. null = non mesuré. */
+  risk_score: number | null;
+  risk_level: RiskLevel | null;
+  risk_confidence: number | null;
+  risk_factors: RiskFactorRow[] | null;
+  holders_top20_share: number | null;
+  holders_excluded: HoldersExcludedRow | null;
+  creator_address: string | null;
+  creator_share: number | null;
+  creator_previous_tokens: number | null;
+  lp_status: LpStatus | null;
+  coordination_flags: CoordinationFlagsRow | null;
+};
+
+export type RiskLevel = "low" | "medium" | "high" | "critical";
+export type LpStatus = "burned" | "locked" | "unlocked" | "unknown";
+
+export type RiskFactorRow = {
+  key: string;
+  label: string;
+  weight: number;
+  normalized: number | null;
+  points: number | null;
+  detail: string;
+  source: string;
+};
+
+export type HoldersExcludedRow = {
+  excluded?: Array<{ account: string; owner: string | null; reason: string; share: number | null }>;
+  accountsConsidered?: number;
+  notes?: string[];
+};
+
+export type CoordinationFlagsRow = {
+  entriesAnalyzed?: number;
+  timedEntries?: number;
+  largestSimultaneousCluster?: number | null;
+  simultaneousRatio?: number | null;
+  fundersChecked?: number;
+  largestFunderGroup?: number | null;
+  sharedFunderRatio?: number | null;
+  coordinationScore?: number | null;
+  sniperRatio?: number | null;
+  liquidityDropRatio?: number | null;
+  notes?: string[];
+  lpNotes?: string[];
+};
+
+export const RISK_LEVEL_LABELS: Record<RiskLevel, string> = {
+  low: "Risque faible",
+  medium: "Risque modéré",
+  high: "Risque élevé",
+  critical: "Risque critique",
+};
+
+export const LP_STATUS_LABELS: Record<LpStatus, string> = {
+  burned: "LP brûlée",
+  locked: "LP verrouillée",
+  unlocked: "LP non verrouillée",
+  unknown: "LP inconnue",
 };
 
 /** Niveau lisible dérivé du score et de la fiabilité des données. */

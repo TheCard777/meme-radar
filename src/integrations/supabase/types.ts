@@ -455,18 +455,25 @@ export type Database = {
         Row: {
           alert_level: string
           alerted_score: number
+          coordination_flags: Json
           created_at: string
+          creator_address: string | null
+          creator_previous_tokens: number | null
+          creator_share: number | null
           data_sufficient: boolean
           detection_signature: string | null
           detection_source: string
           early_buyers_found: number
+          holders_excluded: Json
           holders_top10_share: number | null
+          holders_top20_share: number | null
           id: string
           is_simulated: boolean
           last_alert_at: string | null
           last_enriched_at: string | null
           launched_at: string
           liquidity_usd: number
+          lp_status: string
           market_cap: number
           market_metrics: Json
           market_source: string
@@ -476,6 +483,10 @@ export type Database = {
           new_buyers: number
           price_change_1h: number
           price_usd: number
+          risk_confidence: number
+          risk_factors: Json
+          risk_level: string | null
+          risk_score: number | null
           score: number
           score_confidence: number
           score_factors: Json
@@ -490,18 +501,25 @@ export type Database = {
         Insert: {
           alert_level?: string
           alerted_score?: number
+          coordination_flags?: Json
           created_at?: string
+          creator_address?: string | null
+          creator_previous_tokens?: number | null
+          creator_share?: number | null
           data_sufficient?: boolean
           detection_signature?: string | null
           detection_source?: string
           early_buyers_found?: number
+          holders_excluded?: Json
           holders_top10_share?: number | null
+          holders_top20_share?: number | null
           id?: string
           is_simulated?: boolean
           last_alert_at?: string | null
           last_enriched_at?: string | null
           launched_at?: string
           liquidity_usd?: number
+          lp_status?: string
           market_cap?: number
           market_metrics?: Json
           market_source?: string
@@ -511,6 +529,10 @@ export type Database = {
           new_buyers?: number
           price_change_1h?: number
           price_usd?: number
+          risk_confidence?: number
+          risk_factors?: Json
+          risk_level?: string | null
+          risk_score?: number | null
           score?: number
           score_confidence?: number
           score_factors?: Json
@@ -525,18 +547,25 @@ export type Database = {
         Update: {
           alert_level?: string
           alerted_score?: number
+          coordination_flags?: Json
           created_at?: string
+          creator_address?: string | null
+          creator_previous_tokens?: number | null
+          creator_share?: number | null
           data_sufficient?: boolean
           detection_signature?: string | null
           detection_source?: string
           early_buyers_found?: number
+          holders_excluded?: Json
           holders_top10_share?: number | null
+          holders_top20_share?: number | null
           id?: string
           is_simulated?: boolean
           last_alert_at?: string | null
           last_enriched_at?: string | null
           launched_at?: string
           liquidity_usd?: number
+          lp_status?: string
           market_cap?: number
           market_metrics?: Json
           market_source?: string
@@ -546,6 +575,10 @@ export type Database = {
           new_buyers?: number
           price_change_1h?: number
           price_usd?: number
+          risk_confidence?: number
+          risk_factors?: Json
+          risk_level?: string | null
+          risk_score?: number | null
           score?: number
           score_confidence?: number
           score_factors?: Json
