@@ -1,0 +1,416 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.17"
+  }
+  public: {
+    Tables: {
+      alerts: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          is_simulated: boolean
+          level: string
+          message: string
+          score: number
+          token_id: string | null
+          token_symbol: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          level?: string
+          message: string
+          score?: number
+          token_id?: string | null
+          token_symbol: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          level?: string
+          message?: string
+          score?: number
+          token_id?: string | null
+          token_symbol?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bot_settings: {
+        Row: {
+          created_at: string
+          critical_threshold: number
+          demo_mode: boolean
+          id: string
+          last_scan_at: string | null
+          signal_categories: Json
+          singleton: boolean
+          status: string
+          telegram_connected: boolean
+          telegram_threshold: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          critical_threshold?: number
+          demo_mode?: boolean
+          id?: string
+          last_scan_at?: string | null
+          signal_categories?: Json
+          singleton?: boolean
+          status?: string
+          telegram_connected?: boolean
+          telegram_threshold?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          critical_threshold?: number
+          demo_mode?: boolean
+          id?: string
+          last_scan_at?: string | null
+          signal_categories?: Json
+          singleton?: boolean
+          status?: string
+          telegram_connected?: boolean
+          telegram_threshold?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      smart_wallets: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          is_simulated: boolean
+          label: string | null
+          last_active_at: string
+          simulated_pnl: number
+          trade_count: number
+          win_rate: number
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          label?: string | null
+          last_active_at?: string
+          simulated_pnl?: number
+          trade_count?: number
+          win_rate?: number
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          label?: string | null
+          last_active_at?: string
+          simulated_pnl?: number
+          trade_count?: number
+          win_rate?: number
+        }
+        Relationships: []
+      }
+      token_snapshots: {
+        Row: {
+          buyers: number
+          captured_at: string
+          id: string
+          market_cap: number
+          score: number
+          token_id: string
+          volume: number
+        }
+        Insert: {
+          buyers?: number
+          captured_at?: string
+          id?: string
+          market_cap?: number
+          score?: number
+          token_id: string
+          volume?: number
+        }
+        Update: {
+          buyers?: number
+          captured_at?: string
+          id?: string
+          market_cap?: number
+          score?: number
+          token_id?: string
+          volume?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_snapshots_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tokens: {
+        Row: {
+          created_at: string
+          id: string
+          is_simulated: boolean
+          launched_at: string
+          market_cap: number
+          mint_address: string
+          name: string
+          new_buyers: number
+          score: number
+          score_factors: Json
+          smart_wallet_count: number
+          status: string
+          symbol: string
+          updated_at: string
+          volume_24h: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          launched_at?: string
+          market_cap?: number
+          mint_address: string
+          name: string
+          new_buyers?: number
+          score?: number
+          score_factors?: Json
+          smart_wallet_count?: number
+          status?: string
+          symbol: string
+          updated_at?: string
+          volume_24h?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          launched_at?: string
+          market_cap?: number
+          mint_address?: string
+          name?: string
+          new_buyers?: number
+          score?: number
+          score_factors?: Json
+          smart_wallet_count?: number
+          status?: string
+          symbol?: string
+          updated_at?: string
+          volume_24h?: number
+        }
+        Relationships: []
+      }
+      wallet_trades: {
+        Row: {
+          amount_sol: number
+          id: string
+          is_simulated: boolean
+          side: string
+          token_id: string | null
+          token_symbol: string
+          traded_at: string
+          wallet_id: string
+        }
+        Insert: {
+          amount_sol?: number
+          id?: string
+          is_simulated?: boolean
+          side?: string
+          token_id?: string | null
+          token_symbol: string
+          traded_at?: string
+          wallet_id: string
+        }
+        Update: {
+          amount_sol?: number
+          id?: string
+          is_simulated?: boolean
+          side?: string
+          token_id?: string | null
+          token_symbol?: string
+          traded_at?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_trades_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_trades_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "smart_wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
