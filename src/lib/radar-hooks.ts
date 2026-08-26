@@ -37,6 +37,9 @@ export const useSnapshots = () =>
 
 export const useAlerts = () => useQuery({ queryKey: ["alerts"], queryFn: fetchAlerts });
 
+export const useSmartWalletAlerts = () =>
+  useQuery({ queryKey: ["smart_wallet_alerts"], queryFn: fetchSmartWalletAlerts });
+
 type SettingsPatch = Partial<{
   status: BotStatus;
   telegram_threshold: number;
