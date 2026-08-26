@@ -45,6 +45,12 @@ export type TokenRow = {
   score: number;
   score_factors: ScoreFactor[];
   status: TokenStatus;
+  liquidity_usd: number;
+  price_usd: number;
+  price_change_1h: number;
+  volume_1h: number;
+  market_source: string;
+  last_enriched_at: string | null;
   is_simulated: boolean;
   launched_at: string;
 };

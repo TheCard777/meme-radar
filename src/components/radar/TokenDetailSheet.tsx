@@ -29,14 +29,22 @@ export function TokenDetailSheet({
             <div className="space-y-6 px-4 pb-8">
               <div className="flex items-center gap-2">
                 <StatusPill status={token.status} />
-                <span className="rounded-full border border-warning/40 bg-warning/10 px-2.5 py-0.5 text-xs text-warning">
-                  Simulation
+                <span
+                  className={
+                    token.is_simulated
+                      ? "rounded-full border border-warning/40 bg-warning/10 px-2.5 py-0.5 text-xs text-warning"
+                      : "rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-xs text-primary"
+                  }
+                >
+                  {token.is_simulated ? "Donnée démo" : "Donnée réelle"}
                 </span>
               </div>
 
               <dl className="grid grid-cols-2 gap-3">
                 {[
                   ["Market cap", formatUsd(token.market_cap)],
+                  ["Liquidité", formatUsd(token.liquidity_usd ?? 0)],
+                  ["Variation 1h", `${(token.price_change_1h ?? 0).toFixed(1)} %`],
                   ["Volume 24h", formatUsd(token.volume_24h)],
                   ["Nouveaux acheteurs", String(token.new_buyers)],
                   ["Smart wallets", String(token.smart_wallet_count)],
