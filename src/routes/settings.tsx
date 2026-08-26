@@ -139,9 +139,12 @@ function SettingsPage() {
             </p>
           </section>
 
+          <SystemStatus />
+
           <div className="lg:col-span-2">
             <TelegramPanel connected={settings?.telegram_connected ?? false} />
           </div>
+
         </div>
       )}
     </AppShell>
