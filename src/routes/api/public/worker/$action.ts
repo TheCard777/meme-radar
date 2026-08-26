@@ -270,7 +270,7 @@ async function handlePost(action: string, body: unknown): Promise<Response> {
         if (rows.length > 0) {
           const { error } = await db
             .from("wallet_token_entries")
-            .upsert(rows, { onConflict: "wallet_address,mint_address", ignoreDuplicates: true });
+            .upsert(rows, { onConflict: "wallet_address,token_id", ignoreDuplicates: true });
           if (error) throw new Error(error.message);
           entriesInserted = rows.length;
         }
