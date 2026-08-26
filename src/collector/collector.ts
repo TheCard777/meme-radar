@@ -54,6 +54,8 @@ export class SolanaLogCollector {
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private readonly seenSignatures = new Set<string>();
+  private reconnectScheduled = false;
+  private endpointIndex = 0;
 
   private stats = {
     eventsReceived: 0,
@@ -102,6 +104,30 @@ export class SolanaLogCollector {
     }
   }
 
+  /** URL configurée puis repli dérivé du RPC (certains endpoints premium refusent). */
+  private get endpoints(): string[] {
+    const derived = this.options.rpcUrl.replace(/^http/, "ws");
+    return this.options.wsUrl === derived ? [derived] : [this.options.wsUrl, derived];
+  }
+
+  private get currentEndpoint(): string {
+    const list = this.endpoints;
+    return list[this.endpointIndex % list.length]!;
+  }
+
+  private scheduleReconnect() {
+    if (this.stopped || this.reconnectScheduled) return;
+    this.reconnectScheduled = true;
+    this.attempt += 1;
+    this.endpointIndex += 1;
+    const delay = this.backoffDelay();
+    this.log({ level: "info", event: "reconnect_scheduled", attempt: this.attempt, delay });
+    setTimeout(() => {
+      this.reconnectScheduled = false;
+      void this.connectLoop();
+    }, delay);
+  }
+
   private backoffDelay(): number {
     const base = Math.min(BACKOFF_MAX_MS, BACKOFF_MIN_MS * 2 ** this.attempt);
     return Math.round(base * (0.5 + Math.random() * 0.5));
@@ -128,24 +154,23 @@ export class SolanaLogCollector {
       await this.connect();
       this.attempt = 0;
     } catch (error) {
-      this.attempt += 1;
       this.stats.reconnects += 1;
-      const delay = this.backoffDelay();
       this.log({
         level: "error",
         event: "connect_failed",
-        attempt: this.attempt,
-        retryInMs: delay,
+        attempt: this.attempt + 1,
+        endpoint: new URL(this.currentEndpoint).host,
         error: error instanceof Error ? error.message : String(error),
       });
       await this.report("error", error instanceof Error ? error.message : String(error));
-      setTimeout(() => void this.connectLoop(), delay);
+      this.scheduleReconnect();
     }
   }
 
   private connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const ws = new WebSocket(this.options.wsUrl);
+      const endpoint = this.currentEndpoint;
+      const ws = new WebSocket(endpoint);
       this.ws = ws;
       let settled = false;
 
@@ -162,7 +187,7 @@ export class SolanaLogCollector {
         clearTimeout(timeout);
         settled = true;
         this.lastMessageAt = Date.now();
-        this.log({ level: "info", event: "ws_open" });
+        this.log({ level: "info", event: "ws_open", endpoint: new URL(endpoint).host });
         this.subscribe(ws);
         this.startHeartbeat();
         void this.report("running");
@@ -186,12 +211,8 @@ export class SolanaLogCollector {
         }
         this.log({ level: "warn", event: "ws_close" });
         this.teardownSocket();
-        if (!this.stopped) {
-          this.stats.reconnects += 1;
-          const delay = this.backoffDelay();
-          this.attempt += 1;
-          setTimeout(() => void this.connectLoop(), delay);
-        }
+        this.stats.reconnects += 1;
+        this.scheduleReconnect();
       };
     });
   }
@@ -217,7 +238,7 @@ export class SolanaLogCollector {
       if (idleMs > HEARTBEAT_TIMEOUT_MS) {
         this.log({ level: "warn", event: "heartbeat_timeout", idleMs });
         this.teardownSocket();
-        if (!this.stopped) void this.connectLoop();
+        this.scheduleReconnect();
         return;
       }
       try {
