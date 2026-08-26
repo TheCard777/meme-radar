@@ -61,19 +61,45 @@ interface Settings {
   signalThreshold: number;
   priorityThreshold: number;
   botActive: boolean;
+  earlyOpportunity: EarlyOpportunityConfig;
 }
 
 async function readSettings(): Promise<Settings> {
   const { data } = await supabaseAdmin
     .from("bot_settings")
-    .select("telegram_threshold, critical_threshold, status")
+    .select(
+      "telegram_threshold, critical_threshold, status, early_opportunity_enabled, early_opportunity_min_score, early_opportunity_min_buyers, early_opportunity_max_buyers, early_opportunity_max_age_minutes, early_opportunity_min_liquidity_usd",
+    )
     .limit(1)
     .maybeSingle();
   return {
     signalThreshold: data?.telegram_threshold ?? 85,
     priorityThreshold: data?.critical_threshold ?? 90,
     botActive: data?.status === "active",
+    earlyOpportunity: readEarlyOpportunityConfig(data ?? null),
   };
+}
+
+/**
+ * Nombre d'acheteurs réels observés par token, indépendamment des 1000 tokens
+ * affichés dans le Radar : acheteurs distincts de `wallet_token_entries`.
+ */
+async function countRealBuyers(tokenIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (tokenIds.length === 0) return counts;
+  const { data } = await supabaseAdmin
+    .from("wallet_token_entries")
+    .select("token_id, wallet_address")
+    .in("token_id", tokenIds)
+    .limit(50_000);
+  const distinct = new Map<string, Set<string>>();
+  for (const row of (data ?? []) as Array<{ token_id: string; wallet_address: string }>) {
+    const set = distinct.get(row.token_id) ?? new Set<string>();
+    set.add(row.wallet_address);
+    distinct.set(row.token_id, set);
+  }
+  for (const [tokenId, set] of distinct) counts.set(tokenId, set.size);
+  return counts;
 }
 
 function fmtUsd(value: number | null): string {
