@@ -72,7 +72,7 @@ export class CollectorStore {
         is_simulated: false,
         detection_source: token.source,
         detection_signature: token.signature,
-        status: "new",
+        status: "watching",
         score: 0,
         launched_at: new Date().toISOString(),
       })
