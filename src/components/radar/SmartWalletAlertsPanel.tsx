@@ -65,13 +65,19 @@ export function SmartWalletAlertsPanel() {
 
       <p className="mt-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
         <span className="font-semibold">Meme Radar — Early Opportunity</span> (alerte distincte) —{" "}
+        <span className="font-mono text-primary">âge &lt;2 h</span> +{" "}
         <span className="font-mono text-primary">60–100 acheteurs</span> +{" "}
-        <span className="font-mono text-primary">score ≥65</span> +{" "}
-        <span className="font-mono text-primary">âge ≤2 h</span> +{" "}
-        <span className="font-mono text-primary">liquidité ≥50 000 $</span>. Déclenchée côté serveur
-        dans le pipeline d’enrichissement, indépendamment des 1000 tokens affichés. Un seul envoi
-        par token au franchissement des critères.
+        <span className="font-mono text-primary">liquidité ≥20 000 $</span> +{" "}
+        <span className="font-mono text-primary">volume 1h ≥30 000 $</span> +{" "}
+        <span className="font-mono text-primary">accélération ≥2×</span> (volume des 5 dernières
+        minutes rapporté au rythme de l’heure, uniquement si la donnée est réellement mesurable —
+        sinon marquée « inconnue »). Aucun seuil de score : le score Radar est affiché à titre
+        informatif. Déclenchée côté serveur dans le pipeline d’enrichissement, indépendamment des
+        1000 tokens affichés. Un seul envoi par token, mais les critères sont réévalués à chaque
+        cycle pendant toute la fenêtre de 2 h. Le message Telegram indique l’Early Strength calculée
+        sur les seuls critères mesurés.
       </p>
+
 
 
 
