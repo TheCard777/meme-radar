@@ -16,8 +16,12 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendRawTelegramMessage } from "./telegram.server";
 import { formatAge, formatUsd, shortAddress } from "./radar-service-format";
 
-/** Seuil par défaut (modifiable dans les réglages du bot). */
+/** Seuil par défaut (conservé pour compatibilité, non utilisé pour déclencher). */
 export const DEFAULT_SMART_WALLET_ALERT_THRESHOLD = 75;
+/** Rang d'entrée minimum : le #1 (créateur/acheteur initial) est exclu. */
+export const ALERT_RANK_MIN = 2;
+/** Rang d'entrée maximum retenu pour une alerte. */
+export const ALERT_RANK_MAX = 10;
 /** Nombre maximal d'alertes envoyées par cycle (protection anti-flood). */
 const MAX_ALERTS_PER_CYCLE = 15;
 
@@ -28,6 +32,8 @@ export interface SmartWalletAlertResult {
   errors: string[];
   disabledReason: string | null;
   threshold: number;
+  rankMin: number;
+  rankMax: number;
   tradingEnabled: false;
 }
 
@@ -37,6 +43,7 @@ interface EntryRow {
   token_id: string;
   signature: string | null;
   amount_raw: number | null;
+  entry_rank: number;
 }
 
 function fmtAmount(amountRaw: number | null): string {
@@ -50,6 +57,7 @@ export function buildSmartWalletAlertMessage(params: {
   symbol: string;
   name: string;
   mint: string;
+  entryRank: number;
   amountRaw: number | null;
   marketCap: number | null;
   volume24h: number | null;
@@ -62,6 +70,7 @@ export function buildSmartWalletAlertMessage(params: {
     "",
     `👛 Smart Wallet : ${shortAddress(params.walletAddress)}`,
     `⭐ Score : ${Math.round(params.walletScore)}/100`,
+    `🥇 Rang acheteur : #${params.entryRank} (le #1 est exclu)`,
     `🪙 Token : $${params.symbol}`,
     `📛 Nom : ${params.name}`,
     `💰 Entrée : ${fmtAmount(params.amountRaw)}`,
@@ -103,6 +112,8 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
     errors,
     disabledReason: null,
     threshold,
+    rankMin: ALERT_RANK_MIN,
+    rankMax: ALERT_RANK_MAX,
     tradingEnabled: false,
   };
 
@@ -115,8 +126,7 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
     .from("smart_wallets")
     .select("address, smart_wallet_score")
     .eq("is_simulated", false)
-    .eq("data_sufficient", true)
-    .gte("smart_wallet_score", threshold);
+    .eq("data_sufficient", true);
   if (walletError) throw new Error(walletError.message);
 
   const scoreByWallet = new Map<string, number>();
@@ -124,16 +134,16 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
     address: string;
     smart_wallet_score: number | null;
   }>) {
-    if (wallet.smart_wallet_score !== null) {
-      scoreByWallet.set(wallet.address, wallet.smart_wallet_score);
-    }
+    scoreByWallet.set(wallet.address, wallet.smart_wallet_score ?? 0);
   }
   if (scoreByWallet.size === 0) return result;
 
   const { data: entryRows, error: entryError } = await supabaseAdmin
     .from("wallet_token_entries")
-    .select("wallet_address, mint_address, token_id, signature, amount_raw")
+    .select("wallet_address, mint_address, token_id, signature, amount_raw, entry_rank")
     .in("wallet_address", [...scoreByWallet.keys()])
+    .gte("entry_rank", ALERT_RANK_MIN)
+    .lte("entry_rank", ALERT_RANK_MAX)
     .order("block_time", { ascending: true, nullsFirst: false })
     .limit(5_000);
   if (entryError) throw new Error(entryError.message);
@@ -215,6 +225,7 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
       symbol: token?.symbol ?? "?",
       name: token?.name ?? "inconnu",
       mint: entry.mint_address,
+      entryRank: entry.entry_rank,
       amountRaw: entry.amount_raw,
       marketCap: token?.market_cap ?? null,
       volume24h: token?.volume_24h ?? null,
