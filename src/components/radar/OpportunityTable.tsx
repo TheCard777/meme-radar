@@ -160,7 +160,7 @@ export function OpportunityTable({
 
       {/* Mobile */}
       <ul className="divide-y divide-border/60 md:hidden">
-        {tokens.map((token) => (
+        {sortedTokens.map((token) => (
           <li key={token.id}>
             <button
               type="button"
