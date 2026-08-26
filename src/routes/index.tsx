@@ -61,7 +61,7 @@ function Dashboard() {
             <OpportunityTable tokens={tokens.data ?? []} onSelect={setSelected} />
             <div className="space-y-6">
               <SystemStatus />
-              <TelegramPanel connected={settings.data?.telegram_connected ?? false} />
+              <TelegramPanel />
               <section aria-label="Statut du scanner" className="panel p-4 sm:p-5">
                 <h2 className="text-base font-semibold">Statut du scanner</h2>
                 <dl className="mt-3 space-y-2 text-sm">
