@@ -52,11 +52,14 @@ export function SmartWalletAlertsPanel() {
       </div>
 
       <p className="mt-4 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
-        Critère : le smart wallet doit figurer parmi les acheteurs{" "}
-        <span className="font-mono text-primary">#2 à #10</span> du token. Le{" "}
-        <span className="font-mono">#1</span> est exclu (créateur / acheteur initial). Une seule
-        alerte par wallet et par token, même en cas de rachat.
+        Critère : <span className="font-mono text-primary">Smart Wallet score ≥65</span> +{" "}
+        <span className="font-mono text-primary">token ≥50 acheteurs</span> +{" "}
+        <span className="font-mono text-primary">entrée #2 à #10</span>. Le{" "}
+        <span className="font-mono">#1</span> est exclu (créateur / acheteur initial). Si le token
+        n’a pas encore 50 acheteurs, l’alerte est différée jusqu’à ce que le seuil soit atteint. Une
+        seule alerte par wallet et par token, même en cas de rachat.
       </p>
+
 
 
       <div className="mt-4">

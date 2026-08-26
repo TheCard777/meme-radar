@@ -16,8 +16,12 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendRawTelegramMessage } from "./telegram.server";
 import { formatAge, formatUsd, shortAddress } from "./radar-service-format";
 
-/** Seuil par défaut (conservé pour compatibilité, non utilisé pour déclencher). */
+/** Seuil par défaut historique (réglage conservé pour compatibilité). */
 export const DEFAULT_SMART_WALLET_ALERT_THRESHOLD = 75;
+/** Score minimum requis du smart wallet pour déclencher une alerte. */
+export const MIN_SMART_WALLET_SCORE = 65;
+/** Nombre minimum d'acheteurs réels du token au moment de l'alerte. */
+export const MIN_TOKEN_BUYERS = 50;
 /** Rang d'entrée minimum : le #1 (créateur/acheteur initial) est exclu. */
 export const ALERT_RANK_MIN = 2;
 /** Rang d'entrée maximum retenu pour une alerte. */
@@ -32,6 +36,10 @@ export interface SmartWalletAlertResult {
   errors: string[];
   disabledReason: string | null;
   threshold: number;
+  minWalletScore: number;
+  minBuyers: number;
+  skippedLowScore: number;
+  skippedFewBuyers: number;
   rankMin: number;
   rankMax: number;
   tradingEnabled: false;
@@ -45,6 +53,7 @@ interface EntryRow {
   amount_raw: number | null;
   entry_rank: number;
 }
+
 
 function fmtAmount(amountRaw: number | null): string {
   if (amountRaw === null || !Number.isFinite(amountRaw)) return "inconnu";
@@ -112,6 +121,10 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
     errors,
     disabledReason: null,
     threshold,
+    minWalletScore: MIN_SMART_WALLET_SCORE,
+    minBuyers: MIN_TOKEN_BUYERS,
+    skippedLowScore: 0,
+    skippedFewBuyers: 0,
     rankMin: ALERT_RANK_MIN,
     rankMax: ALERT_RANK_MAX,
     tradingEnabled: false,
@@ -138,10 +151,18 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
   }
   if (scoreByWallet.size === 0) return result;
 
+  // Règle 1 : seuls les wallets au score >= MIN_SMART_WALLET_SCORE sont retenus.
+  const qualifiedWallets = [...scoreByWallet.entries()].filter(
+    ([, score]) => score >= MIN_SMART_WALLET_SCORE,
+  );
+  result.skippedLowScore = scoreByWallet.size - qualifiedWallets.length;
+  const qualifiedAddresses = qualifiedWallets.map(([address]) => address);
+  if (qualifiedAddresses.length === 0) return result;
+
   const { data: entryRows, error: entryError } = await supabaseAdmin
     .from("wallet_token_entries")
     .select("wallet_address, mint_address, token_id, signature, amount_raw, entry_rank")
-    .in("wallet_address", [...scoreByWallet.keys()])
+    .in("wallet_address", qualifiedAddresses)
     .gte("entry_rank", ALERT_RANK_MIN)
     .lte("entry_rank", ALERT_RANK_MAX)
     .order("block_time", { ascending: true, nullsFirst: false })
@@ -160,23 +181,25 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
   const { data: known } = await supabaseAdmin
     .from("smart_wallet_alerts")
     .select("wallet_address, token_mint")
-    .in("wallet_address", [...scoreByWallet.keys()]);
+    .in("wallet_address", qualifiedAddresses);
   const alreadyAlerted = new Set(
     ((known ?? []) as Array<{ wallet_address: string; token_mint: string }>).map(
       (row) => `${row.wallet_address}::${row.token_mint}`,
     ),
   );
 
-  const pending = [...firstEntries.entries()]
+  // Candidats non encore notifiés (l'anti-doublon wallet+token reste actif).
+  const fresh = [...firstEntries.entries()]
     .filter(([key]) => !alreadyAlerted.has(key))
-    .slice(0, MAX_ALERTS_PER_CYCLE)
     .map(([, entry]) => entry);
-  if (pending.length === 0) return result;
+  if (fresh.length === 0) return result;
+
+  const candidateTokenIds = [...new Set(fresh.map((entry) => entry.token_id))];
 
   const { data: tokenRows } = await supabaseAdmin
     .from("tokens")
     .select("id, symbol, name, mint_address, market_cap, volume_24h, new_buyers, launched_at")
-    .in("id", [...new Set(pending.map((entry) => entry.token_id))]);
+    .in("id", candidateTokenIds);
   const tokenById = new Map(
     ((tokenRows ?? []) as Array<{
       id: string;
@@ -189,6 +212,36 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
       launched_at: string;
     }>).map((token) => [token.id, token]),
   );
+
+  // Règle 2 : nombre d'acheteurs réels du token. On combine la métrique
+  // enrichie `tokens.new_buyers` et le nombre d'acheteurs distincts réellement
+  // observés on-chain dans `wallet_token_entries` (indépendant du Radar).
+  const distinctBuyers = new Map<string, Set<string>>();
+  const { data: buyerRows } = await supabaseAdmin
+    .from("wallet_token_entries")
+    .select("token_id, wallet_address")
+    .in("token_id", candidateTokenIds)
+    .limit(50_000);
+  for (const row of (buyerRows ?? []) as Array<{ token_id: string; wallet_address: string }>) {
+    const set = distinctBuyers.get(row.token_id) ?? new Set<string>();
+    set.add(row.wallet_address);
+    distinctBuyers.set(row.token_id, set);
+  }
+  const buyersForToken = (tokenId: string): number =>
+    Math.max(tokenById.get(tokenId)?.new_buyers ?? 0, distinctBuyers.get(tokenId)?.size ?? 0);
+
+  const eligible = fresh.filter((entry) => {
+    if (!tokenById.has(entry.token_id)) return false;
+    if (buyersForToken(entry.token_id) < MIN_TOKEN_BUYERS) {
+      result.skippedFewBuyers += 1;
+      return false;
+    }
+    return true;
+  });
+
+  const pending = eligible.slice(0, MAX_ALERTS_PER_CYCLE);
+  if (pending.length === 0) return result;
+
 
   for (const entry of pending) {
     const token = tokenById.get(entry.token_id);
@@ -229,7 +282,7 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
       amountRaw: entry.amount_raw,
       marketCap: token?.market_cap ?? null,
       volume24h: token?.volume_24h ?? null,
-      buyers: token?.new_buyers ?? null,
+      buyers: buyersForToken(entry.token_id),
       launchedAt: token?.launched_at ?? null,
       signature: entry.signature,
     });
