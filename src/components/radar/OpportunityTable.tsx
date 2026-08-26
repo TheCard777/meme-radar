@@ -89,6 +89,14 @@ export function OpportunityTable({
                     unavailable={!token.is_simulated && !token.data_sufficient}
                   />
                 </td>
+                <td className="px-3 py-3 text-right">
+                  {token.is_simulated ? (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  ) : (
+                    <RiskBadge score={token.risk_score} level={token.risk_level} compact />
+                  )}
+                </td>
+
                 <td className="px-3 py-3 text-right font-mono text-muted-foreground tabular-nums">
                   {formatAge(token.launched_at)}
                 </td>
