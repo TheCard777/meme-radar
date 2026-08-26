@@ -13,13 +13,19 @@ runtime web. Il fait trois choses, **en lecture seule** :
 
 ## 1. Commande de démarrage
 
+Le worker est bundlé en JavaScript pur (esbuild) puis exécuté par **Node ≥ 20**.
+Aucune dépendance à Bun au runtime.
+
 ```bash
-bun install
-bun run worker          # équivaut à: bun run src/collector/main.ts
+npm install --include=dev && npm run build:worker   # build  -> dist/worker.mjs
+npm run start:worker                                # start  -> node dist/worker.mjs
 ```
 
-Node ≥ 20 fonctionne aussi via `bunx tsx src/collector/main.ts`, mais Bun est
-la cible recommandée.
+Bun reste possible en local : `bun run worker:bun`.
+
+> ⚠️ Ne jamais démarrer directement `src/collector/main.ts` avec Node : Node ne
+> lit pas le TypeScript ni l'alias `@/`, d'où le crash
+> `Error: ENOENT ... statSync` observé sur Railway.
 
 ## 2. Variables d'environnement (à créer dans Railway / Render / Fly / VPS)
 
@@ -47,8 +53,10 @@ saisissent dans le panneau « Variables » de l'hébergeur.
 ## 3. Étapes exactes sur Railway
 
 1. **New Project → Deploy from GitHub repo** et sélectionner ce dépôt.
-2. Dans le service créé : **Settings → Deploy → Start Command** = `bun run worker`.
-   (Build command : `bun install`.)
+2. Dans le service créé :
+   - **Settings → Build → Build Command** = `npm install --include=dev && npm run build:worker`
+   - **Settings → Deploy → Start Command** = `npm run start:worker`
+   (Le fichier `railway.json` du dépôt configure déjà ces deux commandes.)
 3. **Variables** : ajouter les 6 variables du tableau ci-dessus
    (`SOLANA_RPC_URL`, `SOLANA_WS_URL`, `SUPABASE_URL`,
    `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`).
