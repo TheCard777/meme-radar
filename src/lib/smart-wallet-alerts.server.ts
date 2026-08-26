@@ -42,6 +42,9 @@ export interface SmartWalletAlertResult {
   minBuyers: number;
   skippedLowScore: number;
   skippedFewBuyers: number;
+  /** Candidats écartés parce que le token est déjà trop ancien. */
+  skippedTooOld: number;
+  maxAgeMinutes: number;
   rankMin: number;
   rankMax: number;
   tradingEnabled: false;
