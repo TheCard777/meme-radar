@@ -33,7 +33,7 @@ export function AppShell({
                 Meme Radar
               </p>
               <p className="text-xs text-muted-foreground">
-                Détection &amp; simulation — aucun trading
+                1M$ soon … Pseaume91
               </p>
             </div>
           </div>
