@@ -82,7 +82,9 @@ saisissent dans le panneau « Variables » de l'hébergeur.
    - **Settings → Deploy → Start Command** = `npm run start:worker`
    (Le fichier `railway.json` du dépôt configure déjà ces deux commandes.)
 3. **Variables obligatoires** : ajouter `SOLANA_RPC_URL`, `MEME_RADAR_API_URL` et
-   aussi `SOLANA_WS_URL`. Telegram reste configuré côté Lovable Cloud.
+   `MEME_RADAR_WORKER_TOKEN`. Optionnel : `SOLANA_WS_URL`. Telegram et la base
+   restent configurés côté Lovable Cloud uniquement.
+
 
 4. **Settings → Restart Policy** : `On Failure`, 10 tentatives.
 5. Déployer, puis ouvrir les **Logs** : des lignes JSON
