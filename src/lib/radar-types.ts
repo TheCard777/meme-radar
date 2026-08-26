@@ -27,6 +27,8 @@ export type BotSettings = {
   telegram_connected: boolean;
   demo_mode: boolean;
   last_scan_at: string | null;
+  smart_wallet_alerts_enabled: boolean;
+  smart_wallet_alert_threshold: number;
 };
 
 export type ScoreFactor = {
