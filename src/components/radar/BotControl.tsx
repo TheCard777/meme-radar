@@ -1,32 +1,21 @@
 import { Pause, Play, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useBotSettings, useUpdateSettings } from "@/lib/radar-hooks";
+import { useBotSettings } from "@/lib/radar-hooks";
+import { useSetBotState, useSystemHealth } from "@/lib/system-hooks";
 import { cn } from "@/lib/utils";
 
 export function BotControl() {
   const { data: settings, isLoading } = useBotSettings();
-  const update = useUpdateSettings();
+  const health = useSystemHealth();
+  const update = useSetBotState();
   const active = settings?.status === "active";
+  const scannerConnected = health.data?.scanner.state === "connected";
 
   const toggle = () => {
     if (!settings) return;
-    const next = active ? "paused" : "active";
-    update.mutate(
-      {
-        id: settings.id,
-        patch: { status: next, last_scan_at: new Date().toISOString() },
-      },
-      {
-        onSuccess: () =>
-          toast.success(
-            next === "active"
-              ? "Scanner activé — surveillance et alertes en cours (simulation)"
-              : "Scanner en pause — données conservées",
-          ),
-      },
-    );
+    update.mutate({ id: settings.id, status: active ? "paused" : "active" });
   };
+
 
   return (
     <div className="flex items-center gap-3">
@@ -45,7 +34,11 @@ export function BotControl() {
         <span className="text-xs font-medium">
           {isLoading ? "Chargement…" : active ? "Bot actif" : "Bot en pause"}
         </span>
+        <span className="hidden text-[11px] text-muted-foreground sm:inline">
+          · {scannerConnected ? "RPC connecté" : "simulation"}
+        </span>
       </div>
+
 
       <Button
         onClick={toggle}

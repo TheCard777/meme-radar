@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/radar/AppShell";
 import { TelegramPanel } from "@/components/radar/TelegramPanel";
+import { SystemStatus } from "@/components/radar/SystemStatus";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -139,9 +141,12 @@ function SettingsPage() {
             </p>
           </section>
 
+          <SystemStatus />
+
           <div className="lg:col-span-2">
             <TelegramPanel connected={settings?.telegram_connected ?? false} />
           </div>
+
         </div>
       )}
     </AppShell>
