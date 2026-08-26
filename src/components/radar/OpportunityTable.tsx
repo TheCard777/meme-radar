@@ -1,7 +1,18 @@
+import { useMemo, useState } from "react";
+import { ArrowDownWideNarrow, TrendingUp } from "lucide-react";
 import { formatAge, formatUsd } from "@/lib/radar-service";
 import { tokenLevel, type TokenRow } from "@/lib/radar-types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
 import { RiskBadge } from "./RiskBadge";
+
+type SortMode = "score" | "newest";
 
 export function OpportunityTable({
   tokens,
