@@ -20,6 +20,8 @@ export interface MarketMetrics {
   liquidityUsd: number | null;
   volume24h: number | null;
   volume1h: number | null;
+  /** Volume des 5 dernières minutes (null si non fourni par la source). */
+  volume5m: number | null;
   buyers1h: number | null;
   priceChange1h: number | null;
   dex: string | null;
@@ -35,10 +37,11 @@ interface DexPair {
   marketCap?: number;
   fdv?: number;
   liquidity?: { usd?: number };
-  volume?: { h24?: number; h1?: number };
+  volume?: { h24?: number; h1?: number; m5?: number };
   txns?: { h1?: { buys?: number } };
   priceChange?: { h1?: number };
 }
+
 
 const ENDPOINT = "https://api.dexscreener.com/latest/dex/tokens/";
 /** DEX Screener accepte jusqu'à 30 adresses par requête. */
