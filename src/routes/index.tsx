@@ -10,7 +10,13 @@ import { CollectorPanel } from "@/components/radar/CollectorPanel";
 import { ScoringPanel } from "@/components/radar/ScoringPanel";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAlerts, useBotSettings, useSmartWallets, useTokens } from "@/lib/radar-hooks";
+import {
+  useAlerts,
+  useBotSettings,
+  useDemoArchived,
+  useSmartWallets,
+  useTokens,
+} from "@/lib/radar-hooks";
 import type { TokenRow } from "@/lib/radar-types";
 
 export const Route = createFileRoute("/")({
@@ -38,15 +44,15 @@ function Dashboard() {
   const alerts = useAlerts();
   const wallets = useSmartWallets();
   const settings = useBotSettings();
+  const demoArchived = useDemoArchived();
 
   const loading = tokens.isLoading || alerts.isLoading || wallets.isLoading;
-  const realTokenCount = (tokens.data ?? []).filter((token) => !token.is_simulated).length;
-  const demoTokenCount = (tokens.data ?? []).filter((token) => token.is_simulated).length;
+  const realTokenCount = (tokens.data ?? []).length;
 
   return (
     <AppShell
       title="Radar des memecoins Solana"
-      subtitle="Observation Solana en lecture seule — données réelles et démo clairement distinguées, aucun ordre n’est passé."
+      subtitle="Observation Solana en lecture seule — 100 % données réelles, aucun ordre n’est passé."
     >
       {loading ? (
         <div className="space-y-4">
@@ -59,6 +65,7 @@ function Dashboard() {
             tokens={tokens.data ?? []}
             alerts={alerts.data ?? []}
             wallets={wallets.data ?? []}
+            demoArchived={demoArchived.data ?? 0}
           />
 
           <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
@@ -86,8 +93,9 @@ function Dashboard() {
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">Source des données</dt>
                     <dd className="text-right">
-                      {realTokenCount > 0 ? `${realTokenCount} réels` : "Aucune donnée réelle"}
-                      {demoTokenCount > 0 ? ` · ${demoTokenCount} démo` : ""}
+                      {realTokenCount > 0
+                        ? `${realTokenCount} tokens réels`
+                        : "Aucune donnée réelle"}
                     </dd>
                   </div>
                 </dl>
