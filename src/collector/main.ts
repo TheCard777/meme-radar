@@ -16,18 +16,64 @@ import { PUMP_FUN_PROGRAM_ID } from "./constants";
 import { SolanaLogCollector } from "./collector";
 import { CollectorStore } from "./store";
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Variable d'environnement manquante : ${name}`);
-  return value;
+const REQUIRED_WORKER_ENV = [
+  "SOLANA_RPC_URL",
+  "SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+] as const;
+
+const OPTIONAL_WORKER_ENV = [
+  "SOLANA_WS_URL",
+  "TELEGRAM_BOT_TOKEN",
+  "TELEGRAM_CHAT_ID",
+] as const;
+
+class MissingWorkerEnvironmentError extends Error {
+  constructor(readonly missingNames: string[]) {
+    super(`Variables d'environnement obligatoires manquantes : ${missingNames.join(", ")}`);
+    this.name = "MissingWorkerEnvironmentError";
+  }
+}
+
+function readWorkerEnvironment(): {
+  rpcUrl: string;
+  wsUrl: string;
+  backendUrl: string;
+  backendServiceKey: string;
+} {
+  const missingNames = REQUIRED_WORKER_ENV.filter((name) => !process.env[name]?.trim());
+  if (missingNames.length > 0) throw new MissingWorkerEnvironmentError([...missingNames]);
+
+  // Le contrôle ci-dessus garantit ces valeurs sans assertion non-null.
+  const rpcUrl = process.env["SOLANA_RPC_URL"]?.trim();
+  const backendUrl = process.env["SUPABASE_URL"]?.trim();
+  const backendServiceKey = process.env["SUPABASE_SERVICE_ROLE_KEY"]?.trim();
+  if (!rpcUrl || !backendUrl || !backendServiceKey) {
+    throw new MissingWorkerEnvironmentError([...REQUIRED_WORKER_ENV]);
+  }
+
+  return {
+    rpcUrl,
+    wsUrl: process.env["SOLANA_WS_URL"]?.trim() || rpcUrl.replace(/^http/, "ws"),
+    backendUrl,
+    backendServiceKey,
+  };
 }
 
 export async function runCollectorWorker(): Promise<SolanaLogCollector> {
-  const rpcUrl = requireEnv("SOLANA_RPC_URL");
-  const wsUrl = process.env["SOLANA_WS_URL"] || rpcUrl.replace(/^http/, "ws");
-  const store = new CollectorStore(
-    requireEnv("SUPABASE_URL"),
-    requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
+  const environment = readWorkerEnvironment();
+  const store = new CollectorStore(environment.backendUrl, environment.backendServiceKey);
+
+  process.stdout.write(
+    `${JSON.stringify({
+      level: "info",
+      scope: "worker",
+      event: "environment_validated",
+      required: REQUIRED_WORKER_ENV,
+      optionalConfigured: OPTIONAL_WORKER_ENV.filter((name) => Boolean(process.env[name]?.trim())),
+      optionalMissing: OPTIONAL_WORKER_ENV.filter((name) => !process.env[name]?.trim()),
+      tradingEnabled: false,
+    })}\n`,
   );
 
   const filterDisabled = process.env["COLLECTOR_PROGRAM_FILTER"] === "off";
@@ -35,7 +81,12 @@ export async function runCollectorWorker(): Promise<SolanaLogCollector> {
     ? null
     : process.env["COLLECTOR_PROGRAM_ID"] || PUMP_FUN_PROGRAM_ID;
 
-  const collector = new SolanaLogCollector({ rpcUrl, wsUrl, programFilter, store });
+  const collector = new SolanaLogCollector({
+    rpcUrl: environment.rpcUrl,
+    wsUrl: environment.wsUrl,
+    programFilter,
+    store,
+  });
   await collector.start();
 
   // Boucle d'enrichissement + scoring + alertes Telegram (observation seule).
@@ -84,7 +135,18 @@ export async function runCollectorWorker(): Promise<SolanaLogCollector> {
 const entry = process.argv[1] ?? "";
 if (entry.endsWith("main.ts") || entry.endsWith("worker.mjs")) {
   void runCollectorWorker().catch((error) => {
-    process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`);
+    const missingNames =
+      error instanceof MissingWorkerEnvironmentError ? error.missingNames : undefined;
+    process.stderr.write(
+      `${JSON.stringify({
+        level: "error",
+        scope: "worker",
+        event: missingNames ? "environment_invalid" : "startup_failed",
+        message: error instanceof Error ? error.message : String(error),
+        ...(missingNames ? { missingNames } : {}),
+        tradingEnabled: false,
+      })}\n`,
+    );
     process.exit(1);
   });
 }
