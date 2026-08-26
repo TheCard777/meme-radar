@@ -5,6 +5,8 @@ import { KpiGrid } from "@/components/radar/KpiGrid";
 import { OpportunityTable } from "@/components/radar/OpportunityTable";
 import { TokenDetailSheet } from "@/components/radar/TokenDetailSheet";
 import { TelegramPanel } from "@/components/radar/TelegramPanel";
+import { SystemStatus } from "@/components/radar/SystemStatus";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAlerts, useBotSettings, useSmartWallets, useTokens } from "@/lib/radar-hooks";
 import type { TokenRow } from "@/lib/radar-types";
