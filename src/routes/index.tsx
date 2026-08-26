@@ -36,11 +36,11 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:image",
-        content: "https://token-spotter-ai.lovable.app/__l5e/assets-v1/9ad2a5c5-e1c0-4963-870d-73bce005faf2/meme-radar-logo.png",
+        content: "https://token-spotter-ai.lovable.app/__l5e/assets-v1/2ec26853-2f6a-45c1-93ba-1a79cd2d17ee/meme-radar-logo.png",
       },
       {
         name: "twitter:image",
-        content: "https://token-spotter-ai.lovable.app/__l5e/assets-v1/9ad2a5c5-e1c0-4963-870d-73bce005faf2/meme-radar-logo.png",
+        content: "https://token-spotter-ai.lovable.app/__l5e/assets-v1/2ec26853-2f6a-45c1-93ba-1a79cd2d17ee/meme-radar-logo.png",
       },
     ],
   }),
