@@ -16,8 +16,12 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendRawTelegramMessage } from "./telegram.server";
 import { formatAge, formatUsd, shortAddress } from "./radar-service-format";
 
-/** Seuil par défaut (conservé pour compatibilité, non utilisé pour déclencher). */
+/** Seuil par défaut historique (réglage conservé pour compatibilité). */
 export const DEFAULT_SMART_WALLET_ALERT_THRESHOLD = 75;
+/** Score minimum requis du smart wallet pour déclencher une alerte. */
+export const MIN_SMART_WALLET_SCORE = 65;
+/** Nombre minimum d'acheteurs réels du token au moment de l'alerte. */
+export const MIN_TOKEN_BUYERS = 50;
 /** Rang d'entrée minimum : le #1 (créateur/acheteur initial) est exclu. */
 export const ALERT_RANK_MIN = 2;
 /** Rang d'entrée maximum retenu pour une alerte. */
@@ -32,6 +36,10 @@ export interface SmartWalletAlertResult {
   errors: string[];
   disabledReason: string | null;
   threshold: number;
+  minWalletScore: number;
+  minBuyers: number;
+  skippedLowScore: number;
+  skippedFewBuyers: number;
   rankMin: number;
   rankMax: number;
   tradingEnabled: false;
@@ -45,6 +53,7 @@ interface EntryRow {
   amount_raw: number | null;
   entry_rank: number;
 }
+
 
 function fmtAmount(amountRaw: number | null): string {
   if (amountRaw === null || !Number.isFinite(amountRaw)) return "inconnu";
