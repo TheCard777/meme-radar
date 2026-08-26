@@ -13,7 +13,11 @@ export interface SystemHealth {
     state: "not_configured" | "connected" | "unreachable" | "error";
     endpoint: string | null;
     websocket: boolean;
+    websocketState: "absent" | "configured" | "verified" | "failed";
+    websocketMessage: string;
     latencyMs: number | null;
+    slot: number | null;
+    version: string | null;
     message: string;
     demoData: boolean;
   };
