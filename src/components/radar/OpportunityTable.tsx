@@ -82,13 +82,21 @@ export function OpportunityTable({
                   {token.smart_wallet_count}
                 </td>
                 <td className="px-3 py-3 text-right">
-                  <ScoreBadge score={token.score} />
+                  <ScoreBadge
+                    score={token.score}
+                    unavailable={!token.is_simulated && !token.data_sufficient}
+                  />
                 </td>
                 <td className="px-3 py-3 text-right font-mono text-muted-foreground tabular-nums">
                   {formatAge(token.launched_at)}
                 </td>
                 <td className="px-5 py-3">
-                  <StatusPill status={token.status} />
+                  <div className="flex flex-col gap-1">
+                    <StatusPill status={token.status} />
+                    <span className="text-[10px] text-muted-foreground">
+                      {tokenLevel(token).label}
+                    </span>
+                  </div>
                 </td>
               </tr>
             ))}
