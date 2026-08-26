@@ -1,4 +1,4 @@
-import { Activity, Database, Send, ShieldCheck } from "lucide-react";
+import { Activity, Database, Radio, Send, ShieldCheck } from "lucide-react";
 import { useSystemHealth } from "@/lib/system-hooks";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +47,9 @@ export function SystemStatus() {
 
   const scannerTone: Tone =
     data?.scanner.state === "connected" ? "ok" : data?.scanner.state === "error" ? "warn" : "off";
+  const wsState = data?.scanner.websocketState;
+  const wsTone: Tone = wsState === "verified" ? "ok" : wsState === "failed" ? "warn" : "off";
+  const live = data?.scanner.state === "connected" && !data.scanner.demoData;
   const telegramTone: Tone = data?.telegram.configured
     ? data.telegram.chatConfigured
       ? "ok"
@@ -84,6 +87,21 @@ export function SystemStatus() {
           tone={scannerTone}
         />
         <StatusRow
+          icon={<Radio className="size-4" />}
+          label="Flux temps réel (WebSocket)"
+          value={
+            wsState === "verified"
+              ? "Vérifié"
+              : wsState === "configured"
+                ? "Configuré"
+                : wsState === "failed"
+                  ? "Échec"
+                  : "Absent"
+          }
+          detail={data?.scanner.websocketMessage ?? "Vérification du handshake WebSocket."}
+          tone={wsTone}
+        />
+        <StatusRow
           icon={<Send className="size-4" />}
           label="Alertes Telegram"
           value={data?.telegram.configured ? "Connecté" : "Non connecté"}
@@ -105,6 +123,30 @@ export function SystemStatus() {
           tone="off"
         />
       </ul>
+
+      {live ? (
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { label: "Latence RPC", value: data.scanner.latencyMs != null ? `${data.scanner.latencyMs} ms` : "—" },
+            { label: "Slot", value: data.scanner.slot != null ? data.scanner.slot.toLocaleString("fr-FR") : "—" },
+            { label: "Nœud", value: data.scanner.version ?? "—" },
+            { label: "Endpoint", value: data.scanner.endpoint ?? "—" },
+          ].map((m) => (
+            <div key={m.label} className="rounded-md border border-border/60 bg-surface p-2">
+              <p className="text-[11px] text-muted-foreground">{m.label}</p>
+              <p className="mt-0.5 truncate font-mono text-xs font-semibold">{m.value}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {live ? (
+        <p className="mt-3 rounded-md border border-primary/30 bg-primary/10 p-3 text-xs text-primary">
+          Connexion mainnet Solana saine (lecture seule). Les tokens, wallets et alertes déjà
+          enregistrés restent toutefois des seeds de démonstration tant que le collecteur temps réel
+          n'écrit pas de nouvelles données.
+        </p>
+      ) : null}
 
       {data?.scanner.demoData ? (
         <p className="mt-3 rounded-md border border-warning/30 bg-warning/10 p-3 text-xs text-warning">
