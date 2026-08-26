@@ -1,8 +1,18 @@
 import { cn } from "@/lib/utils";
 
-export function ScoreBadge({ score, className }: { score: number; className?: string }) {
-  const tone =
-    score >= 90
+export function ScoreBadge({
+  score,
+  className,
+  unavailable = false,
+}: {
+  score: number;
+  className?: string;
+  /** Données insuffisantes : on n'affiche aucun chiffre trompeur. */
+  unavailable?: boolean;
+}) {
+  const tone = unavailable
+    ? "border-border bg-muted text-muted-foreground"
+    : score >= 90
       ? "border-destructive/40 bg-destructive/15 text-destructive"
       : score >= 85
         ? "border-primary/40 bg-primary/15 text-primary"
@@ -11,14 +21,21 @@ export function ScoreBadge({ score, className }: { score: number; className?: st
           : "border-border bg-muted text-muted-foreground";
   return (
     <span
+      title={unavailable ? "Données insuffisantes pour un score fiable" : undefined}
       className={cn(
         "inline-flex min-w-14 items-center justify-center rounded-md border px-2 py-0.5 font-mono text-sm font-semibold tabular-nums",
         tone,
         className,
       )}
     >
-      {score}
-      <span className="ml-0.5 text-[0.65rem] opacity-70">/100</span>
+      {unavailable ? (
+        <span className="text-[0.7rem]">n/a</span>
+      ) : (
+        <>
+          {score}
+          <span className="ml-0.5 text-[0.65rem] opacity-70">/100</span>
+        </>
+      )}
     </span>
   );
 }
