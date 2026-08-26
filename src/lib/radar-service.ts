@@ -33,7 +33,32 @@ export async function fetchBotSettings(): Promise<BotSettings> {
     telegram_connected: data.telegram_connected,
     demo_mode: data.demo_mode,
     last_scan_at: data.last_scan_at,
+    smart_wallet_alerts_enabled: data.smart_wallet_alerts_enabled ?? true,
+    smart_wallet_alert_threshold: data.smart_wallet_alert_threshold ?? 75,
   };
+}
+
+/** Alertes « Smart Wallet Entry » déjà envoyées (anti-doublon persistant). */
+export async function fetchSmartWalletAlerts(): Promise<
+  Array<{
+    id: string;
+    wallet_address: string;
+    token_mint: string;
+    token_symbol: string | null;
+    wallet_score: number | null;
+    telegram_sent: boolean;
+    first_entry_detected_at: string;
+  }>
+> {
+  const { data, error } = await supabase
+    .from("smart_wallet_alerts")
+    .select(
+      "id, wallet_address, token_mint, token_symbol, wallet_score, telegram_sent, first_entry_detected_at",
+    )
+    .order("first_entry_detected_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function fetchTokens(): Promise<TokenRow[]> {
