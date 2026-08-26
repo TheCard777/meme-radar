@@ -72,12 +72,14 @@ export type Database = {
           created_at: string
           critical_threshold: number
           demo_mode: boolean
+          early_opportunity_acceleration_factor: number
           early_opportunity_enabled: boolean
           early_opportunity_max_age_minutes: number
           early_opportunity_max_buyers: number
           early_opportunity_min_buyers: number
           early_opportunity_min_liquidity_usd: number
           early_opportunity_min_score: number
+          early_opportunity_min_volume_1h_usd: number
           id: string
           last_scan_at: string | null
           signal_categories: Json
@@ -97,12 +99,14 @@ export type Database = {
           created_at?: string
           critical_threshold?: number
           demo_mode?: boolean
+          early_opportunity_acceleration_factor?: number
           early_opportunity_enabled?: boolean
           early_opportunity_max_age_minutes?: number
           early_opportunity_max_buyers?: number
           early_opportunity_min_buyers?: number
           early_opportunity_min_liquidity_usd?: number
           early_opportunity_min_score?: number
+          early_opportunity_min_volume_1h_usd?: number
           id?: string
           last_scan_at?: string | null
           signal_categories?: Json
@@ -122,12 +126,14 @@ export type Database = {
           created_at?: string
           critical_threshold?: number
           demo_mode?: boolean
+          early_opportunity_acceleration_factor?: number
           early_opportunity_enabled?: boolean
           early_opportunity_max_age_minutes?: number
           early_opportunity_max_buyers?: number
           early_opportunity_min_buyers?: number
           early_opportunity_min_liquidity_usd?: number
           early_opportunity_min_score?: number
+          early_opportunity_min_volume_1h_usd?: number
           id?: string
           last_scan_at?: string | null
           signal_categories?: Json
@@ -216,10 +222,12 @@ export type Database = {
       }
       early_opportunity_alerts: {
         Row: {
+          acceleration: number | null
           age_minutes: number | null
           buyers: number | null
           created_at: string
           detected_at: string
+          early_strength: number | null
           id: string
           liquidity_usd: number | null
           market_cap: number | null
@@ -230,12 +238,15 @@ export type Database = {
           token_mint: string
           token_symbol: string | null
           updated_at: string
+          volume_1h_usd: number | null
         }
         Insert: {
+          acceleration?: number | null
           age_minutes?: number | null
           buyers?: number | null
           created_at?: string
           detected_at?: string
+          early_strength?: number | null
           id?: string
           liquidity_usd?: number | null
           market_cap?: number | null
@@ -246,12 +257,15 @@ export type Database = {
           token_mint: string
           token_symbol?: string | null
           updated_at?: string
+          volume_1h_usd?: number | null
         }
         Update: {
+          acceleration?: number | null
           age_minutes?: number | null
           buyers?: number | null
           created_at?: string
           detected_at?: string
+          early_strength?: number | null
           id?: string
           liquidity_usd?: number | null
           market_cap?: number | null
@@ -262,6 +276,7 @@ export type Database = {
           token_mint?: string
           token_symbol?: string | null
           updated_at?: string
+          volume_1h_usd?: number | null
         }
         Relationships: [
           {
