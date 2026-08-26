@@ -35,8 +35,17 @@ Bun reste possible en local : `bun run worker:bun`.
 | `SOLANA_WS_URL` | non | WebSocket ; à défaut, dérivé du RPC (`http`→`ws`) |
 | `SUPABASE_URL` | oui | URL du projet backend |
 | `SUPABASE_SERVICE_ROLE_KEY` | oui | Écriture serveur (jamais côté navigateur) |
-| `TELEGRAM_BOT_TOKEN` | oui pour les alertes | Bot Telegram |
-| `TELEGRAM_CHAT_ID` | oui pour les alertes | Destinataire des alertes |
+| `TELEGRAM_BOT_TOKEN` | non | Bot Telegram ; sans cette variable, les alertes restent en base |
+| `TELEGRAM_CHAT_ID` | non | Destinataire ; requis avec le token pour envoyer sur Telegram |
+
+Le démarrage exige uniquement `SOLANA_RPC_URL`, `SUPABASE_URL` et
+`SUPABASE_SERVICE_ROLE_KEY`. Les trois autres variables activent ou personnalisent
+des intégrations facultatives et leur absence ne fait pas crasher le worker.
+
+> Les variables configurées dans Lovable Cloud ne sont pas copiées dans Railway.
+> Elles doivent être ajoutées au service Railway `meme-radar` (et dans le bon
+> environnement Railway). Respecter exactement la casse et ne pas ajouter de
+> guillemets au nom des variables.
 
 Options :
 
@@ -57,9 +66,9 @@ saisissent dans le panneau « Variables » de l'hébergeur.
    - **Settings → Build → Build Command** = `npm install --include=dev && npm run build:worker`
    - **Settings → Deploy → Start Command** = `npm run start:worker`
    (Le fichier `railway.json` du dépôt configure déjà ces deux commandes.)
-3. **Variables** : ajouter les 6 variables du tableau ci-dessus
-   (`SOLANA_RPC_URL`, `SOLANA_WS_URL`, `SUPABASE_URL`,
-   `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`).
+3. **Variables obligatoires** : ajouter `SOLANA_RPC_URL`, `SUPABASE_URL` et
+   `SUPABASE_SERVICE_ROLE_KEY`. Pour le WebSocket explicite et Telegram, ajouter
+   aussi `SOLANA_WS_URL`, `TELEGRAM_BOT_TOKEN` et `TELEGRAM_CHAT_ID`.
 4. **Settings → Restart Policy** : `On Failure`, 10 tentatives.
 5. Déployer, puis ouvrir les **Logs** : des lignes JSON
    `{"level":"info","scope":"collector",...}` doivent apparaître en continu.
