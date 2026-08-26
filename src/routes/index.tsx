@@ -1,24 +1,91 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { AppShell } from "@/components/radar/AppShell";
+import { KpiGrid } from "@/components/radar/KpiGrid";
+import { OpportunityTable } from "@/components/radar/OpportunityTable";
+import { TokenDetailSheet } from "@/components/radar/TokenDetailSheet";
+import { TelegramPanel } from "@/components/radar/TelegramPanel";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAlerts, useBotSettings, useSmartWallets, useTokens } from "@/lib/radar-hooks";
+import type { TokenRow } from "@/lib/radar-types";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "Meme Radar — Détection de memecoins Solana" },
+      {
+        name: "description",
+        content:
+          "Dashboard privé de détection et de simulation de memecoins Solana : scoring, smart wallets et alertes. Aucun trading automatique.",
+      },
+      { property: "og:title", content: "Meme Radar — Détection de memecoins Solana" },
+      {
+        property: "og:description",
+        content: "Scoring des nouveaux memecoins Solana, smart wallets et alertes en simulation.",
+      },
+    ],
+  }),
+  component: Dashboard,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Dashboard() {
+  const [selected, setSelected] = useState<TokenRow | null>(null);
+  const tokens = useTokens();
+  const alerts = useAlerts();
+  const wallets = useSmartWallets();
+  const settings = useBotSettings();
+
+  const loading = tokens.isLoading || alerts.isLoading || wallets.isLoading;
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
+    <AppShell
+      title="Radar des memecoins Solana"
+      subtitle="Détection, scoring et alertes — mode simulation, aucun ordre n’est passé."
     >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+      {loading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <KpiGrid
+            tokens={tokens.data ?? []}
+            alerts={alerts.data ?? []}
+            wallets={wallets.data ?? []}
+          />
+
+          <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
+            <OpportunityTable tokens={tokens.data ?? []} onSelect={setSelected} />
+            <div className="space-y-6">
+              <TelegramPanel connected={settings.data?.telegram_connected ?? false} />
+              <section aria-label="Statut du scanner" className="panel p-4 sm:p-5">
+                <h2 className="text-base font-semibold">Statut du scanner</h2>
+                <dl className="mt-3 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Mode</dt>
+                    <dd>{settings.data?.status === "active" ? "Actif" : "En pause"}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Seuil Telegram</dt>
+                    <dd className="font-mono">{settings.data?.telegram_threshold ?? 85}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Seuil critique</dt>
+                    <dd className="font-mono">{settings.data?.critical_threshold ?? 90}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Source des données</dt>
+                    <dd>Simulation</dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <TokenDetailSheet token={selected} onOpenChange={(open) => !open && setSelected(null)} />
+    </AppShell>
   );
 }
