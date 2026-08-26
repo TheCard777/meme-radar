@@ -44,6 +44,7 @@ export function OpportunityTable({
               <th scope="col" className="px-3 py-3 text-right font-medium">Nouv. acheteurs</th>
               <th scope="col" className="px-3 py-3 text-right font-medium">Smart wallets</th>
               <th scope="col" className="px-3 py-3 text-right font-medium">Score</th>
+              <th scope="col" className="px-3 py-3 text-right font-medium">Risque</th>
               <th scope="col" className="px-3 py-3 text-right font-medium">Âge</th>
               <th scope="col" className="px-5 py-3 font-medium">Statut</th>
             </tr>
