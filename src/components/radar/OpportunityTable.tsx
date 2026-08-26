@@ -94,7 +94,7 @@ export function OpportunityTable({
             </tr>
           </thead>
           <tbody>
-            {tokens.map((token) => (
+            {sortedTokens.map((token) => (
               <tr
                 key={token.id}
                 tabIndex={0}
