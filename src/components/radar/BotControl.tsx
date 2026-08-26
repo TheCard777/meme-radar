@@ -34,7 +34,11 @@ export function BotControl() {
         <span className="text-xs font-medium">
           {isLoading ? "Chargement…" : active ? "Bot actif" : "Bot en pause"}
         </span>
+        <span className="hidden text-[11px] text-muted-foreground sm:inline">
+          · {scannerConnected ? "RPC connecté" : "simulation"}
+        </span>
       </div>
+
 
       <Button
         onClick={toggle}
