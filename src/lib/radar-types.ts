@@ -38,6 +38,7 @@ export type ScoreFactor = {
   normalized?: number | null;
   points?: number | null;
   detail?: string;
+  source?: string;
 };
 
 export type TokenStatus = "watching" | "signal" | "critical" | "cooling" | "archived";
@@ -107,6 +108,15 @@ export type SmartWallet = {
   simulated_pnl: number;
   trade_count: number;
   last_active_at: string;
+  /** Métriques réelles issues de l'analyse on-chain (null = inconnu). */
+  smart_wallet_score: number | null;
+  early_entries: number;
+  tokens_tracked: number;
+  success_count: number;
+  success_rate: number | null;
+  median_multiple: number | null;
+  data_sufficient: boolean;
+  reasons: string[];
 };
 
 export type WalletTrade = {
@@ -120,6 +130,8 @@ export type WalletTrade = {
 
 export type AlertRow = {
   id: string;
+  token_id?: string | null;
+  price_usd_at_alert?: number | null;
   token_symbol: string;
   level: "info" | "signal" | "critical";
   score: number;
