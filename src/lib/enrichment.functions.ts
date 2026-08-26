@@ -7,6 +7,8 @@ import type { EnrichmentResult } from "./enrichment.server";
  */
 export const runEnrichmentCycle = createServerFn({ method: "POST" }).handler(
   async (): Promise<EnrichmentResult> => {
+    const { analyzeRealWallets } = await import("./wallets.server");
+    await analyzeRealWallets();
     const { enrichRealTokens } = await import("./enrichment.server");
     return enrichRealTokens();
   },
