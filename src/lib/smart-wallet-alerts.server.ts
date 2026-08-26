@@ -21,11 +21,13 @@ export const DEFAULT_SMART_WALLET_ALERT_THRESHOLD = 75;
 /** Score minimum requis du smart wallet pour déclencher une alerte. */
 export const MIN_SMART_WALLET_SCORE = 65;
 /** Nombre minimum d'acheteurs réels du token au moment de l'alerte. */
-export const MIN_TOKEN_BUYERS = 100;
+export const MIN_TOKEN_BUYERS = 60;
 /** Rang d'entrée minimum : le #1 (créateur/acheteur initial) est exclu. */
 export const ALERT_RANK_MIN = 2;
 /** Rang d'entrée maximum retenu pour une alerte. */
 export const ALERT_RANK_MAX = 100;
+/** Âge maximum du token (minutes) : l'alerte doit rester « early entry ». */
+export const MAX_TOKEN_AGE_MINUTES = 120;
 /** Nombre maximal d'alertes envoyées par cycle (protection anti-flood). */
 const MAX_ALERTS_PER_CYCLE = 15;
 
@@ -40,6 +42,9 @@ export interface SmartWalletAlertResult {
   minBuyers: number;
   skippedLowScore: number;
   skippedFewBuyers: number;
+  /** Candidats écartés parce que le token est déjà trop ancien. */
+  skippedTooOld: number;
+  maxAgeMinutes: number;
   rankMin: number;
   rankMax: number;
   tradingEnabled: false;
@@ -125,6 +130,8 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
     minBuyers: MIN_TOKEN_BUYERS,
     skippedLowScore: 0,
     skippedFewBuyers: 0,
+    skippedTooOld: 0,
+    maxAgeMinutes: MAX_TOKEN_AGE_MINUTES,
     rankMin: ALERT_RANK_MIN,
     rankMax: ALERT_RANK_MAX,
     tradingEnabled: false,
@@ -230,8 +237,16 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
   const buyersForToken = (tokenId: string): number =>
     Math.max(tokenById.get(tokenId)?.new_buyers ?? 0, distinctBuyers.get(tokenId)?.size ?? 0);
 
+  const nowMs = Date.now();
   const eligible = fresh.filter((entry) => {
-    if (!tokenById.has(entry.token_id)) return false;
+    const token = tokenById.get(entry.token_id);
+    if (!token) return false;
+    // Règle 3 : l'alerte doit rester « early entry » — token de moins de 2 h.
+    const ageMinutes = (nowMs - new Date(token.launched_at).getTime()) / 60_000;
+    if (!Number.isFinite(ageMinutes) || ageMinutes > MAX_TOKEN_AGE_MINUTES) {
+      result.skippedTooOld += 1;
+      return false;
+    }
     if (buyersForToken(entry.token_id) < MIN_TOKEN_BUYERS) {
       result.skippedFewBuyers += 1;
       return false;

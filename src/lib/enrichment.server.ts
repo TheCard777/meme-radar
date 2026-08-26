@@ -19,6 +19,12 @@ import {
   type MarketMetrics,
 } from "./market.server";
 import { sendAlertTelegram } from "./telegram.server";
+import {
+  matchesEarlyOpportunity,
+  readEarlyOpportunityConfig,
+  recordEarlyOpportunity,
+  type EarlyOpportunityConfig,
+} from "./early-opportunity.server";
 
 /** Délai minimal entre deux alertes pour un même token. */
 export const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
@@ -32,6 +38,10 @@ export interface EnrichmentResult {
   telegramSent: number;
   telegramSkipped: string | null;
   topScore: number | null;
+  /** Alertes « Early Opportunity » créées pendant ce cycle. */
+  earlyOpportunitiesCreated: number;
+  /** Messages Telegram « Early Opportunity » réellement envoyés. */
+  earlyOpportunitiesTelegramSent: number;
   errors: string[];
   tradingEnabled: false;
 }
@@ -51,19 +61,45 @@ interface Settings {
   signalThreshold: number;
   priorityThreshold: number;
   botActive: boolean;
+  earlyOpportunity: EarlyOpportunityConfig;
 }
 
 async function readSettings(): Promise<Settings> {
   const { data } = await supabaseAdmin
     .from("bot_settings")
-    .select("telegram_threshold, critical_threshold, status")
+    .select(
+      "telegram_threshold, critical_threshold, status, early_opportunity_enabled, early_opportunity_min_score, early_opportunity_min_buyers, early_opportunity_max_buyers, early_opportunity_max_age_minutes, early_opportunity_min_liquidity_usd",
+    )
     .limit(1)
     .maybeSingle();
   return {
     signalThreshold: data?.telegram_threshold ?? 85,
     priorityThreshold: data?.critical_threshold ?? 90,
     botActive: data?.status === "active",
+    earlyOpportunity: readEarlyOpportunityConfig(data ?? null),
   };
+}
+
+/**
+ * Nombre d'acheteurs réels observés par token, indépendamment des 1000 tokens
+ * affichés dans le Radar : acheteurs distincts de `wallet_token_entries`.
+ */
+async function countRealBuyers(tokenIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (tokenIds.length === 0) return counts;
+  const { data } = await supabaseAdmin
+    .from("wallet_token_entries")
+    .select("token_id, wallet_address")
+    .in("token_id", tokenIds)
+    .limit(50_000);
+  const distinct = new Map<string, Set<string>>();
+  for (const row of (data ?? []) as Array<{ token_id: string; wallet_address: string }>) {
+    const set = distinct.get(row.token_id) ?? new Set<string>();
+    set.add(row.wallet_address);
+    distinct.set(row.token_id, set);
+  }
+  for (const [tokenId, set] of distinct) counts.set(tokenId, set.size);
+  return counts;
 }
 
 function fmtUsd(value: number | null): string {
@@ -149,6 +185,8 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
     telegramSent: 0,
     telegramSkipped: null,
     topScore: null,
+    earlyOpportunitiesCreated: 0,
+    earlyOpportunitiesTelegramSent: 0,
     errors,
     tradingEnabled: false,
   };
@@ -162,6 +200,7 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
     return result;
   }
 
+  const onChainBuyers = await countRealBuyers(tokens.map((t) => t.id));
   const now = new Date();
 
   for (const token of tokens) {
@@ -260,6 +299,37 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       score: scoring.score ?? 0,
       price_usd: metrics.priceUsd ?? 0,
     });
+
+    // ---- Alerte « Early Opportunity » (indépendante du niveau SIGNAL/PRIORITÉ)
+    // Traction précoce : âge <= 2 h, 60-100 acheteurs, score >= 65, liquidité min.
+    if (scoring.score !== null) {
+      const buyers = Math.max(
+        Math.round(metrics.buyers1h ?? 0),
+        onChainBuyers.get(token.id) ?? 0,
+      );
+      const candidate = {
+        tokenId: token.id,
+        mint: token.mint_address,
+        symbol,
+        name: metrics.name ?? token.name,
+        score: scoring.score,
+        confidence: scoring.confidence,
+        buyers,
+        liquidityUsd: metrics.liquidityUsd ?? null,
+        marketCap: metrics.marketCap ?? null,
+        volume24h: metrics.volume24h ?? null,
+        ageMinutes,
+        pairUrl: metrics.pairUrl ?? null,
+      };
+      if (matchesEarlyOpportunity(candidate, settings.earlyOpportunity)) {
+        const outcome = await recordEarlyOpportunity(candidate, settings.earlyOpportunity, {
+          sendTelegram: settings.botActive,
+        });
+        if (outcome.created) result.earlyOpportunitiesCreated += 1;
+        if (outcome.telegramSent) result.earlyOpportunitiesTelegramSent += 1;
+        if (outcome.error) errors.push(`early-opportunity ${token.mint_address}: ${outcome.error}`);
+      }
+    }
 
     if (scoring.level !== "signal" && scoring.level !== "priority") continue;
 

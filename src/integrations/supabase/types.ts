@@ -72,12 +72,22 @@ export type Database = {
           created_at: string
           critical_threshold: number
           demo_mode: boolean
+          early_opportunity_enabled: boolean
+          early_opportunity_max_age_minutes: number
+          early_opportunity_max_buyers: number
+          early_opportunity_min_buyers: number
+          early_opportunity_min_liquidity_usd: number
+          early_opportunity_min_score: number
           id: string
           last_scan_at: string | null
           signal_categories: Json
           singleton: boolean
           smart_wallet_alert_threshold: number
           smart_wallet_alerts_enabled: boolean
+          smart_wallet_max_age_minutes: number
+          smart_wallet_min_buyers: number
+          smart_wallet_min_score: number
+          smart_wallet_rank_max: number
           status: string
           telegram_connected: boolean
           telegram_threshold: number
@@ -87,12 +97,22 @@ export type Database = {
           created_at?: string
           critical_threshold?: number
           demo_mode?: boolean
+          early_opportunity_enabled?: boolean
+          early_opportunity_max_age_minutes?: number
+          early_opportunity_max_buyers?: number
+          early_opportunity_min_buyers?: number
+          early_opportunity_min_liquidity_usd?: number
+          early_opportunity_min_score?: number
           id?: string
           last_scan_at?: string | null
           signal_categories?: Json
           singleton?: boolean
           smart_wallet_alert_threshold?: number
           smart_wallet_alerts_enabled?: boolean
+          smart_wallet_max_age_minutes?: number
+          smart_wallet_min_buyers?: number
+          smart_wallet_min_score?: number
+          smart_wallet_rank_max?: number
           status?: string
           telegram_connected?: boolean
           telegram_threshold?: number
@@ -102,12 +122,22 @@ export type Database = {
           created_at?: string
           critical_threshold?: number
           demo_mode?: boolean
+          early_opportunity_enabled?: boolean
+          early_opportunity_max_age_minutes?: number
+          early_opportunity_max_buyers?: number
+          early_opportunity_min_buyers?: number
+          early_opportunity_min_liquidity_usd?: number
+          early_opportunity_min_score?: number
           id?: string
           last_scan_at?: string | null
           signal_categories?: Json
           singleton?: boolean
           smart_wallet_alert_threshold?: number
           smart_wallet_alerts_enabled?: boolean
+          smart_wallet_max_age_minutes?: number
+          smart_wallet_min_buyers?: number
+          smart_wallet_min_score?: number
+          smart_wallet_rank_max?: number
           status?: string
           telegram_connected?: boolean
           telegram_threshold?: number
@@ -183,6 +213,65 @@ export type Database = {
           table_name?: string
         }
         Relationships: []
+      }
+      early_opportunity_alerts: {
+        Row: {
+          age_minutes: number | null
+          buyers: number | null
+          created_at: string
+          detected_at: string
+          id: string
+          liquidity_usd: number | null
+          market_cap: number | null
+          score: number | null
+          telegram_error: string | null
+          telegram_sent: boolean
+          token_id: string | null
+          token_mint: string
+          token_symbol: string | null
+          updated_at: string
+        }
+        Insert: {
+          age_minutes?: number | null
+          buyers?: number | null
+          created_at?: string
+          detected_at?: string
+          id?: string
+          liquidity_usd?: number | null
+          market_cap?: number | null
+          score?: number | null
+          telegram_error?: string | null
+          telegram_sent?: boolean
+          token_id?: string | null
+          token_mint: string
+          token_symbol?: string | null
+          updated_at?: string
+        }
+        Update: {
+          age_minutes?: number | null
+          buyers?: number | null
+          created_at?: string
+          detected_at?: string
+          id?: string
+          liquidity_usd?: number | null
+          market_cap?: number | null
+          score?: number | null
+          telegram_error?: string | null
+          telegram_sent?: boolean
+          token_id?: string | null
+          token_mint?: string
+          token_symbol?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "early_opportunity_alerts_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       smart_wallet_alerts: {
         Row: {
