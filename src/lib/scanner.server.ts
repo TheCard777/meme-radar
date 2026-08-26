@@ -93,19 +93,16 @@ export class SolanaScannerConnection {
     return res?.["solana-core"] ?? null;
   }
 
-  /**
-   * Vérifie le canal temps réel sans souscrire à quoi que ce soit :
-   * simple handshake WebSocket, fermé immédiatement.
-   */
-  async checkWebsocket(timeoutMs = 4000): Promise<{ state: WebsocketState; message: string }> {
-    const url = this.config.wsUrl;
-    if (!url) {
-      return {
-        state: "absent",
-        message: "Aucune URL WebSocket configurée (SOLANA_WS_URL).",
-      };
-    }
+  /** URL WebSocket configurée, plus repli dérivé du endpoint RPC. */
+  get wsCandidates(): string[] {
+    const list: string[] = [];
+    if (this.config.wsUrl) list.push(this.config.wsUrl);
+    const derived = this.config.rpcUrl.replace(/^http/, "ws");
+    if (!list.includes(derived)) list.push(derived);
+    return list;
+  }
 
+  private async tryWebsocket(url: string, timeoutMs: number): Promise<boolean> {
     // 1) Runtime Worker : upgrade via fetch.
     try {
       const res = await fetch(url.replace(/^ws/, "http"), {
@@ -116,23 +113,20 @@ export class SolanaScannerConnection {
       if (res.status === 101 && socket) {
         socket.accept();
         socket.close();
-        return { state: "verified", message: "Handshake WebSocket temps réel vérifié." };
+        return true;
       }
+      if (res.status === 101) return true;
     } catch {
       // le runtime ne supporte pas l'upgrade via fetch → fallback ci-dessous
     }
 
     // 2) Runtime Node : constructeur WebSocket global.
     const WS = (globalThis as { WebSocket?: new (url: string) => any }).WebSocket;
-    if (!WS) {
-      return {
-        state: "configured",
-        message: "URL WebSocket configurée (handshake non vérifiable sur ce runtime).",
-      };
-    }
-    return await new Promise((resolve) => {
+    if (!WS) return false;
+    return await new Promise<boolean>((resolve) => {
       let done = false;
-      const finish = (state: WebsocketState, message: string) => {
+      const ws = new WS(url);
+      const finish = (ok: boolean) => {
         if (done) return;
         done = true;
         try {
@@ -140,23 +134,61 @@ export class SolanaScannerConnection {
         } catch {
           /* noop */
         }
-        resolve({ state, message });
+        resolve(ok);
       };
-      const ws = new WS(url);
-      const timer = setTimeout(
-        () => finish("failed", "Délai dépassé lors du handshake WebSocket."),
-        timeoutMs,
-      );
+      const timer = setTimeout(() => finish(false), timeoutMs);
       ws.onopen = () => {
         clearTimeout(timer);
-        finish("verified", "Handshake WebSocket temps réel vérifié.");
+        finish(true);
       };
       ws.onerror = () => {
         clearTimeout(timer);
-        finish("failed", "Connexion WebSocket refusée par le fournisseur.");
+        finish(false);
       };
     });
   }
+
+  /**
+   * Vérifie le canal temps réel sans souscrire à quoi que ce soit :
+   * simple handshake WebSocket, fermé immédiatement. Si l'URL configurée est
+   * refusée (endpoint premium non inclus dans le plan), on teste le WebSocket
+   * standard dérivé du RPC.
+   */
+  async checkWebsocket(
+    timeoutMs = 4000,
+  ): Promise<{ state: WebsocketState; message: string; url: string | null }> {
+    const candidates = this.wsCandidates;
+    if (candidates.length === 0) {
+      return {
+        state: "absent",
+        message: "Aucune URL WebSocket configurée (SOLANA_WS_URL).",
+        url: null,
+      };
+    }
+
+    for (const [index, candidate] of candidates.entries()) {
+      const ok = await this.tryWebsocket(candidate, timeoutMs);
+      if (ok) {
+        return {
+          state: "verified",
+          message:
+            index === 0
+              ? "Handshake WebSocket vérifié sur l'endpoint configuré (souscriptions temps réel possibles)."
+              : "Endpoint WebSocket configuré refusé — repli sur le WebSocket standard du RPC, handshake vérifié.",
+          url: candidate,
+        };
+      }
+    }
+
+    return {
+      state: "failed",
+      message:
+        "Aucun handshake WebSocket accepté (endpoint temps réel refusé par le fournisseur). Le RPC HTTP reste utilisable en polling.",
+      url: null,
+    };
+  }
+}
+
 }
 
 export async function getScannerStatus(): Promise<ScannerStatus> {
