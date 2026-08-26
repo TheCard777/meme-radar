@@ -189,8 +189,6 @@ export class SolanaScannerConnection {
   }
 }
 
-}
-
 export async function getScannerStatus(): Promise<ScannerStatus> {
   const config = readSolanaConfig();
   if (!config) {
