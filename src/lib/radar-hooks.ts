@@ -20,6 +20,9 @@ export const useBotSettings = () =>
 
 export const useTokens = () => useQuery({ queryKey: ["tokens"], queryFn: fetchTokens });
 
+export const useTotalRealTokenCount = () =>
+  useQuery({ queryKey: ["tokens", "total_real_count"], queryFn: fetchTotalRealTokenCount });
+
 export const useSmartWallets = () =>
   useQuery({ queryKey: ["smart_wallets"], queryFn: fetchSmartWallets });
 
