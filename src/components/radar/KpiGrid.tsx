@@ -48,7 +48,7 @@ export function KpiGrid({
       <Kpi
         label="Tokens analysés"
         value={String(tokens.length)}
-        hint="Tokens réels détectés on-chain"
+        hint={`${totalTokens ?? tokens.length} conservés en base — 1000 affichés sur ${totalTokens ?? tokens.length} conservés`}
         icon={Radar}
       />
       <Kpi

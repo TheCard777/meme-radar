@@ -16,6 +16,7 @@ import {
   useDemoArchived,
   useSmartWallets,
   useTokens,
+  useTotalRealTokenCount,
 } from "@/lib/radar-hooks";
 import type { TokenRow } from "@/lib/radar-types";
 
