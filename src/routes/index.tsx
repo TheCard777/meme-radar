@@ -46,8 +46,10 @@ function Dashboard() {
   const wallets = useSmartWallets();
   const settings = useBotSettings();
   const demoArchived = useDemoArchived();
+  const totalTokens = useTotalRealTokenCount();
 
-  const loading = tokens.isLoading || alerts.isLoading || wallets.isLoading;
+  const loading =
+    tokens.isLoading || alerts.isLoading || wallets.isLoading || totalTokens.isLoading;
   const realTokenCount = (tokens.data ?? []).length;
 
   return (
