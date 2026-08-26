@@ -25,7 +25,13 @@ export interface DetectedToken {
   source: string;
 }
 
-export class CollectorStore {
+export interface CollectorStorage {
+  readDesiredState(): Promise<CollectorDesiredState>;
+  reportState(report: CollectorReport): Promise<void>;
+  insertDetectedToken(token: DetectedToken): Promise<boolean>;
+}
+
+export class CollectorStore implements CollectorStorage {
   private readonly client: SupabaseClient;
 
   constructor(url: string, serviceKey: string) {

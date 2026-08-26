@@ -1,26 +1,23 @@
 /**
  * Point d'entrée du worker collecteur Solana (processus long-running 24/7).
  *
- * Usage (hors runtime Lovable, sur un hébergeur type Railway/Fly/VPS) :
- *   SOLANA_RPC_URL=... SOLANA_WS_URL=... SUPABASE_URL=... \
- *   SUPABASE_SERVICE_ROLE_KEY=... bun run src/collector/main.ts
+ * Deux modes de persistance :
+ *  - MODE API (recommandé, Railway) : le worker parle uniquement à l'API
+ *    sécurisée Meme Radar via MEME_RADAR_API_URL + MEME_RADAR_WORKER_TOKEN.
+ *    Aucune service-role key, aucune URL backend côté Railway.
+ *  - MODE DIRECT (héritage, local) : SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY.
  *
- * Options d'environnement :
- *   COLLECTOR_PROGRAM_FILTER=off  -> désactive le filtre Pump.fun (tous les logs)
- *   COLLECTOR_PROGRAM_ID=<id>     -> remplace le program ID surveillé
+ * Le WebSocket Solana reste TOUJOURS dans ce worker : il n'est jamais
+ * remplacé par une fonction serveur.
  *
  * MODE OBSERVATION UNIQUEMENT : aucun trading, aucune clé privée de wallet.
  */
 
 import { PUMP_FUN_PROGRAM_ID } from "./constants";
 import { SolanaLogCollector } from "./collector";
+import { ApiCollectorStore } from "./api-store";
 import { CollectorStore } from "./store";
-
-const REQUIRED_WORKER_ENV = [
-  "SOLANA_RPC_URL",
-  "SUPABASE_URL",
-  "SUPABASE_SERVICE_ROLE_KEY",
-] as const;
+import type { CollectorStorage } from "./store";
 
 const OPTIONAL_WORKER_ENV = [
   "SOLANA_WS_URL",
@@ -35,43 +32,70 @@ class MissingWorkerEnvironmentError extends Error {
   }
 }
 
-function readWorkerEnvironment(): {
+const env = (name: string): string | undefined => process.env[name]?.trim() || undefined;
+
+interface WorkerEnvironment {
   rpcUrl: string;
   wsUrl: string;
-  backendUrl: string;
-  backendServiceKey: string;
-} {
-  const missingNames = REQUIRED_WORKER_ENV.filter((name) => !process.env[name]?.trim());
-  if (missingNames.length > 0) throw new MissingWorkerEnvironmentError([...missingNames]);
+  mode: "api" | "direct";
+  apiUrl?: string;
+  apiToken?: string;
+  backendUrl?: string;
+  backendServiceKey?: string;
+}
 
-  // Le contrôle ci-dessus garantit ces valeurs sans assertion non-null.
-  const rpcUrl = process.env["SOLANA_RPC_URL"]?.trim();
-  const backendUrl = process.env["SUPABASE_URL"]?.trim();
-  const backendServiceKey = process.env["SUPABASE_SERVICE_ROLE_KEY"]?.trim();
-  if (!rpcUrl || !backendUrl || !backendServiceKey) {
-    throw new MissingWorkerEnvironmentError([...REQUIRED_WORKER_ENV]);
+function readWorkerEnvironment(): WorkerEnvironment {
+  const missing: string[] = [];
+  const rpcUrl = env("SOLANA_RPC_URL");
+  if (!rpcUrl) missing.push("SOLANA_RPC_URL");
+
+  const apiUrl = env("MEME_RADAR_API_URL");
+  const apiToken = env("MEME_RADAR_WORKER_TOKEN");
+  const backendUrl = env("SUPABASE_URL");
+  const backendServiceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+
+  const apiMode = Boolean(apiUrl || apiToken) || !(backendUrl && backendServiceKey);
+  if (apiMode) {
+    if (!apiUrl) missing.push("MEME_RADAR_API_URL");
+    if (!apiToken) missing.push("MEME_RADAR_WORKER_TOKEN");
   }
+
+  if (missing.length > 0 || !rpcUrl) throw new MissingWorkerEnvironmentError(missing);
 
   return {
     rpcUrl,
-    wsUrl: process.env["SOLANA_WS_URL"]?.trim() || rpcUrl.replace(/^http/, "ws"),
-    backendUrl,
-    backendServiceKey,
+    wsUrl: env("SOLANA_WS_URL") ?? rpcUrl.replace(/^http/, "ws"),
+    mode: apiMode ? "api" : "direct",
+    ...(apiUrl ? { apiUrl } : {}),
+    ...(apiToken ? { apiToken } : {}),
+    ...(backendUrl ? { backendUrl } : {}),
+    ...(backendServiceKey ? { backendServiceKey } : {}),
   };
 }
 
 export async function runCollectorWorker(): Promise<SolanaLogCollector> {
   const environment = readWorkerEnvironment();
-  const store = new CollectorStore(environment.backendUrl, environment.backendServiceKey);
+
+  let store: CollectorStorage;
+  let apiStore: ApiCollectorStore | null = null;
+  if (environment.mode === "api") {
+    apiStore = new ApiCollectorStore(environment.apiUrl as string, environment.apiToken as string);
+    store = apiStore;
+  } else {
+    store = new CollectorStore(
+      environment.backendUrl as string,
+      environment.backendServiceKey as string,
+    );
+  }
 
   process.stdout.write(
     `${JSON.stringify({
       level: "info",
       scope: "worker",
       event: "environment_validated",
-      required: REQUIRED_WORKER_ENV,
-      optionalConfigured: OPTIONAL_WORKER_ENV.filter((name) => Boolean(process.env[name]?.trim())),
-      optionalMissing: OPTIONAL_WORKER_ENV.filter((name) => !process.env[name]?.trim()),
+      persistenceMode: environment.mode,
+      optionalConfigured: OPTIONAL_WORKER_ENV.filter((name) => Boolean(env(name))),
+      optionalMissing: OPTIONAL_WORKER_ENV.filter((name) => !env(name)),
       tradingEnabled: false,
     })}\n`,
   );
@@ -93,17 +117,20 @@ export async function runCollectorWorker(): Promise<SolanaLogCollector> {
   let enrichTimer: ReturnType<typeof setInterval> | null = null;
   if (process.env["COLLECTOR_ENRICH"] !== "off") {
     const intervalMs = Number(process.env["COLLECTOR_ENRICH_INTERVAL_MS"] ?? 90_000);
-    const { enrichRealTokens } = await import("../lib/enrichment.server");
-    const { analyzeRealWallets } = await import("../lib/wallets.server");
+    const runCycle = apiStore
+      ? // Mode API : le calcul s'exécute côté Lovable Cloud (secrets restants là-bas).
+        async () => apiStore.runEnrichmentCycle()
+      : async () => {
+          const { analyzeRealWallets } = await import("../lib/wallets.server");
+          const { enrichRealTokens } = await import("../lib/enrichment.server");
+          const wallets = await analyzeRealWallets();
+          const result = await enrichRealTokens();
+          return { wallets, ...result } as Record<string, unknown>;
+        };
+
     const cycle = async () => {
       try {
-        // 1) Premiers acheteurs réels (on-chain, lecture seule).
-        const wallets = await analyzeRealWallets();
-        process.stdout.write(
-          `${JSON.stringify({ level: "info", scope: "wallets", ...wallets })}\n`,
-        );
-        // 2) Enrichissement + scoring + alertes Telegram.
-        const result = await enrichRealTokens();
+        const result = await runCycle();
         process.stdout.write(
           `${JSON.stringify({ level: "info", scope: "enrichment", ...result })}\n`,
         );

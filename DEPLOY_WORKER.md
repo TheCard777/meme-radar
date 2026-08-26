@@ -27,25 +27,40 @@ Bun reste possible en local : `bun run worker:bun`.
 > lit pas le TypeScript ni l'alias `@/`, d'où le crash
 > `Error: ENOENT ... statSync` observé sur Railway.
 
-## 2. Variables d'environnement (à créer dans Railway / Render / Fly / VPS)
+## 2. Variables d'environnement (Railway / Render / Fly / VPS)
+
+Le worker n'accède plus directement à la base : il passe par l'API sécurisée
+Meme Radar (Edge/serveur Lovable Cloud). **Aucune service-role key sur Railway.**
 
 | Variable | Obligatoire | Rôle |
 | --- | --- | --- |
 | `SOLANA_RPC_URL` | oui | RPC HTTPS Solana (lecture seule) |
+| `MEME_RADAR_API_URL` | oui | Base de l'app, ex. `https://project--093cfa11-923c-45a0-9fdd-610af01e0cd1.lovable.app` |
+| `MEME_RADAR_WORKER_TOKEN` | oui | Secret partagé (identique au secret Lovable Cloud du même nom) |
 | `SOLANA_WS_URL` | non | WebSocket ; à défaut, dérivé du RPC (`http`→`ws`) |
-| `SUPABASE_URL` | oui | URL du projet backend |
-| `SUPABASE_SERVICE_ROLE_KEY` | oui | Écriture serveur (jamais côté navigateur) |
-| `TELEGRAM_BOT_TOKEN` | non | Bot Telegram ; sans cette variable, les alertes restent en base |
-| `TELEGRAM_CHAT_ID` | non | Destinataire ; requis avec le token pour envoyer sur Telegram |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | non | Restent côté Lovable Cloud ; inutiles sur Railway |
 
-Le démarrage exige uniquement `SOLANA_RPC_URL`, `SUPABASE_URL` et
-`SUPABASE_SERVICE_ROLE_KEY`. Les trois autres variables activent ou personnalisent
-des intégrations facultatives et leur absence ne fait pas crasher le worker.
+Mode hérité (local uniquement) : si `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
+sont présents et que les variables `MEME_RADAR_*` sont absentes, le worker écrit
+directement en base.
 
-> Les variables configurées dans Lovable Cloud ne sont pas copiées dans Railway.
-> Elles doivent être ajoutées au service Railway `meme-radar` (et dans le bon
-> environnement Railway). Respecter exactement la casse et ne pas ajouter de
-> guillemets au nom des variables.
+### API du worker (toutes en `Bearer $MEME_RADAR_WORKER_TOKEN`)
+
+| Méthode | URL | Payload |
+| --- | --- | --- |
+| POST | `/api/public/worker/tokens` | `{"tokens":[{"mintAddress","signature","source"}]}` |
+| POST | `/api/public/worker/snapshots` | `{"snapshots":[{"mintAddress","marketCap","volume","liquidityUsd","priceUsd","buyers","score"}]}` |
+| POST | `/api/public/worker/wallets` | `{"wallets":[{"address","smartWalletScore","earlyEntries","tokensTracked","successCount","successRate","medianMultiple","dataSufficient","reasons"}],"entries":[{"walletAddress","mintAddress","signature","entryRank","amountRaw","blockTime"}]}` |
+| POST | `/api/public/worker/scores` | `{"scores":[{"mintAddress","score","scoreFactors","scoreConfidence","dataSufficient","missingMetrics","status","smartWalletCount"}]}` |
+| POST | `/api/public/worker/alerts` | `{"mintAddress","level":"signal|critical","score","message","channel","priceUsdAtAlert","marketCapAtAlert","alertLevel":"none|signal|priority","alertedScore"}` |
+| POST | `/api/public/worker/state` | rapport heartbeat du collecteur |
+| POST | `/api/public/worker/enrich` | `{}` — lance wallets + enrichissement + scoring + Telegram côté Cloud |
+| GET | `/api/public/worker/read?resource=state\|settings\|tokens\|wallets` | lecture |
+
+Toutes les écritures restent sur les données réelles (`is_simulated = false`),
+RLS et service-role restent exclusivement côté serveur, et chaque appel est
+journalisé (`scope: "worker-api"`) sans jamais loguer de secret.
+
 
 Options :
 
@@ -66,9 +81,11 @@ saisissent dans le panneau « Variables » de l'hébergeur.
    - **Settings → Build → Build Command** = `npm install --include=dev && npm run build:worker`
    - **Settings → Deploy → Start Command** = `npm run start:worker`
    (Le fichier `railway.json` du dépôt configure déjà ces deux commandes.)
-3. **Variables obligatoires** : ajouter `SOLANA_RPC_URL`, `SUPABASE_URL` et
-   `SUPABASE_SERVICE_ROLE_KEY`. Pour le WebSocket explicite et Telegram, ajouter
-   aussi `SOLANA_WS_URL`, `TELEGRAM_BOT_TOKEN` et `TELEGRAM_CHAT_ID`.
+3. **Variables obligatoires** : ajouter `SOLANA_RPC_URL`, `MEME_RADAR_API_URL` et
+   `MEME_RADAR_WORKER_TOKEN`. Optionnel : `SOLANA_WS_URL`. Telegram et la base
+   restent configurés côté Lovable Cloud uniquement.
+
+
 4. **Settings → Restart Policy** : `On Failure`, 10 tentatives.
 5. Déployer, puis ouvrir les **Logs** : des lignes JSON
    `{"level":"info","scope":"collector",...}` doivent apparaître en continu.
