@@ -189,6 +189,7 @@ export type Database = {
           buyers: number
           captured_at: string
           id: string
+          liquidity_usd: number
           market_cap: number
           score: number
           token_id: string
@@ -198,6 +199,7 @@ export type Database = {
           buyers?: number
           captured_at?: string
           id?: string
+          liquidity_usd?: number
           market_cap?: number
           score?: number
           token_id: string
@@ -207,6 +209,7 @@ export type Database = {
           buyers?: number
           captured_at?: string
           id?: string
+          liquidity_usd?: number
           market_cap?: number
           score?: number
           token_id?: string
@@ -224,60 +227,81 @@ export type Database = {
       }
       tokens: {
         Row: {
+          alerted_score: number
           created_at: string
           detection_signature: string | null
           detection_source: string
           id: string
           is_simulated: boolean
+          last_enriched_at: string | null
           launched_at: string
+          liquidity_usd: number
           market_cap: number
+          market_source: string
           mint_address: string
           name: string
           new_buyers: number
+          price_change_1h: number
+          price_usd: number
           score: number
           score_factors: Json
           smart_wallet_count: number
           status: string
           symbol: string
           updated_at: string
+          volume_1h: number
           volume_24h: number
         }
         Insert: {
+          alerted_score?: number
           created_at?: string
           detection_signature?: string | null
           detection_source?: string
           id?: string
           is_simulated?: boolean
+          last_enriched_at?: string | null
           launched_at?: string
+          liquidity_usd?: number
           market_cap?: number
+          market_source?: string
           mint_address: string
           name: string
           new_buyers?: number
+          price_change_1h?: number
+          price_usd?: number
           score?: number
           score_factors?: Json
           smart_wallet_count?: number
           status?: string
           symbol: string
           updated_at?: string
+          volume_1h?: number
           volume_24h?: number
         }
         Update: {
+          alerted_score?: number
           created_at?: string
           detection_signature?: string | null
           detection_source?: string
           id?: string
           is_simulated?: boolean
+          last_enriched_at?: string | null
           launched_at?: string
+          liquidity_usd?: number
           market_cap?: number
+          market_source?: string
           mint_address?: string
           name?: string
           new_buyers?: number
+          price_change_1h?: number
+          price_usd?: number
           score?: number
           score_factors?: Json
           smart_wallet_count?: number
           status?: string
           symbol?: string
           updated_at?: string
+          volume_1h?: number
           volume_24h?: number
         }
         Relationships: []
