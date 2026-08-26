@@ -9,6 +9,8 @@ type SettingsInput = {
     critical_threshold: number;
     signal_categories: SignalCategories;
     last_scan_at: string;
+    smart_wallet_alerts_enabled: boolean;
+    smart_wallet_alert_threshold: number;
   }>;
 };
 
