@@ -30,8 +30,8 @@ export function AppShell({
               src={logoAsset.url}
               alt="Logo Meme Radar"
               width={44}
-              height={48}
-              className="h-11 w-auto shrink-0 drop-shadow-[0_0_12px_oklch(0.78_0.19_155/0.35)]"
+              height={44}
+              className="size-11 shrink-0 rounded-xl object-contain drop-shadow-[0_0_12px_oklch(0.78_0.19_155/0.35)]"
             />
             <div>
               <p className="font-display text-lg font-semibold leading-tight text-gradient">
