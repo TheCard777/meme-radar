@@ -235,8 +235,16 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
   const buyersForToken = (tokenId: string): number =>
     Math.max(tokenById.get(tokenId)?.new_buyers ?? 0, distinctBuyers.get(tokenId)?.size ?? 0);
 
+  const nowMs = Date.now();
   const eligible = fresh.filter((entry) => {
-    if (!tokenById.has(entry.token_id)) return false;
+    const token = tokenById.get(entry.token_id);
+    if (!token) return false;
+    // Règle 3 : l'alerte doit rester « early entry » — token de moins de 2 h.
+    const ageMinutes = (nowMs - new Date(token.launched_at).getTime()) / 60_000;
+    if (!Number.isFinite(ageMinutes) || ageMinutes > MAX_TOKEN_AGE_MINUTES) {
+      result.skippedTooOld += 1;
+      return false;
+    }
     if (buyersForToken(entry.token_id) < MIN_TOKEN_BUYERS) {
       result.skippedFewBuyers += 1;
       return false;
