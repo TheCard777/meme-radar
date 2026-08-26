@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as WalletsRouteImport } from './routes/wallets'
+import { Route as ApiPublicCollectorHealthRouteImport } from './routes/api/public/collector-health'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +36,12 @@ const WalletsRoute = WalletsRouteImport.update({
   path: '/wallets',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCollectorHealthRoute =
+  ApiPublicCollectorHealthRouteImport.update({
+    id: '/api/public/collector-health',
+    path: '/api/public/collector-health',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
   id: '/api/public/health',
   path: '/api/public/health',
@@ -46,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/alerts': typeof AlertsRoute
   '/settings': typeof SettingsRoute
   '/wallets': typeof WalletsRoute
+  '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
   '/api/public/health': typeof ApiPublicHealthRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +61,7 @@ export interface FileRoutesByTo {
   '/alerts': typeof AlertsRoute
   '/settings': typeof SettingsRoute
   '/wallets': typeof WalletsRoute
+  '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
   '/api/public/health': typeof ApiPublicHealthRoute
 }
 export interface FileRoutesById {
@@ -61,19 +70,33 @@ export interface FileRoutesById {
   '/alerts': typeof AlertsRoute
   '/settings': typeof SettingsRoute
   '/wallets': typeof WalletsRoute
+  '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
   '/api/public/health': typeof ApiPublicHealthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/alerts' | '/settings' | '/wallets' | '/api/public/health'
+  fullPaths:
+    | '/'
+    | '/alerts'
+    | '/settings'
+    | '/wallets'
+    | '/api/public/collector-health'
+    | '/api/public/health'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/alerts' | '/settings' | '/wallets' | '/api/public/health'
+  to:
+    | '/'
+    | '/alerts'
+    | '/settings'
+    | '/wallets'
+    | '/api/public/collector-health'
+    | '/api/public/health'
   id:
     | '__root__'
     | '/'
     | '/alerts'
     | '/settings'
     | '/wallets'
+    | '/api/public/collector-health'
     | '/api/public/health'
   fileRoutesById: FileRoutesById
 }
@@ -82,6 +105,7 @@ export interface RootRouteChildren {
   AlertsRoute: typeof AlertsRoute
   SettingsRoute: typeof SettingsRoute
   WalletsRoute: typeof WalletsRoute
+  ApiPublicCollectorHealthRoute: typeof ApiPublicCollectorHealthRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
 }
 
@@ -115,6 +139,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalletsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/collector-health': {
+      id: '/api/public/collector-health'
+      path: '/api/public/collector-health'
+      fullPath: '/api/public/collector-health'
+      preLoaderRoute: typeof ApiPublicCollectorHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/health': {
       id: '/api/public/health'
       path: '/api/public/health'
@@ -130,6 +161,7 @@ const rootRouteChildren: RootRouteChildren = {
   AlertsRoute: AlertsRoute,
   SettingsRoute: SettingsRoute,
   WalletsRoute: WalletsRoute,
+  ApiPublicCollectorHealthRoute: ApiPublicCollectorHealthRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
 }
 export const routeTree = rootRouteImport

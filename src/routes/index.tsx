@@ -6,6 +6,7 @@ import { OpportunityTable } from "@/components/radar/OpportunityTable";
 import { TokenDetailSheet } from "@/components/radar/TokenDetailSheet";
 import { TelegramPanel } from "@/components/radar/TelegramPanel";
 import { SystemStatus } from "@/components/radar/SystemStatus";
+import { CollectorPanel } from "@/components/radar/CollectorPanel";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAlerts, useBotSettings, useSmartWallets, useTokens } from "@/lib/radar-hooks";
@@ -61,6 +62,7 @@ function Dashboard() {
             <OpportunityTable tokens={tokens.data ?? []} onSelect={setSelected} />
             <div className="space-y-6">
               <SystemStatus />
+              <CollectorPanel />
               <TelegramPanel />
               <section aria-label="Statut du scanner" className="panel p-4 sm:p-5">
                 <h2 className="text-base font-semibold">Statut du scanner</h2>
