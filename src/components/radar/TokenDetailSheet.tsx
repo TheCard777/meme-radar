@@ -106,6 +106,12 @@ export function TokenDetailSheet({
                       {factor.detail ? (
                         <p className="mt-1 text-[11px] text-muted-foreground">{factor.detail}</p>
                       ) : null}
+                      {factor.source ? (
+                        <p className="text-[11px] text-muted-foreground/70">
+                          Source : {factor.source}
+                        </p>
+                      ) : null}
+
                     </div>
                   );
                 })}

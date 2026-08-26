@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Activity, Flame, Radar, Wallet } from "lucide-react";
+import { Activity, Archive, Flame, Radar, Wallet } from "lucide-react";
 import type { AlertRow, SmartWallet, TokenRow } from "@/lib/radar-types";
 
 function Kpi({
@@ -29,10 +29,12 @@ export function KpiGrid({
   tokens,
   alerts,
   wallets,
+  demoArchived = 0,
 }: {
   tokens: TokenRow[];
   alerts: AlertRow[];
   wallets: SmartWallet[];
+  demoArchived?: number;
 }) {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
@@ -44,7 +46,7 @@ export function KpiGrid({
       <Kpi
         label="Tokens analysés"
         value={String(tokens.length)}
-        hint="Sur la fenêtre de scan courante"
+        hint="Tokens réels détectés on-chain"
         icon={Radar}
       />
       <Kpi
@@ -62,9 +64,17 @@ export function KpiGrid({
       <Kpi
         label="Wallets surveillés"
         value={String(wallets.length)}
-        hint="Smart money suivie"
+        hint="Adresses réelles observées on-chain"
         icon={Wallet}
       />
+      {demoArchived > 0 && (
+        <Kpi
+          label="Démo archivées"
+          value={String(demoArchived)}
+          hint="Lignes de démonstration retirées du flux réel"
+          icon={Archive}
+        />
+      )}
     </section>
   );
 }

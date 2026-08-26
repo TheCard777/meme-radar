@@ -43,8 +43,15 @@ export async function runCollectorWorker(): Promise<SolanaLogCollector> {
   if (process.env["COLLECTOR_ENRICH"] !== "off") {
     const intervalMs = Number(process.env["COLLECTOR_ENRICH_INTERVAL_MS"] ?? 90_000);
     const { enrichRealTokens } = await import("../lib/enrichment.server");
+    const { analyzeRealWallets } = await import("../lib/wallets.server");
     const cycle = async () => {
       try {
+        // 1) Premiers acheteurs réels (on-chain, lecture seule).
+        const wallets = await analyzeRealWallets();
+        process.stdout.write(
+          `${JSON.stringify({ level: "info", scope: "wallets", ...wallets })}\n`,
+        );
+        // 2) Enrichissement + scoring + alertes Telegram.
         const result = await enrichRealTokens();
         process.stdout.write(
           `${JSON.stringify({ level: "info", scope: "enrichment", ...result })}\n`,

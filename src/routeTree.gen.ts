@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AlertsRouteImport } from './routes/alerts'
+import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as WalletsRouteImport } from './routes/wallets'
 import { Route as ApiPublicCollectorHealthRouteImport } from './routes/api/public/collector-health'
@@ -25,6 +26,11 @@ const IndexRoute = IndexRouteImport.update({
 const AlertsRoute = AlertsRouteImport.update({
   id: '/alerts',
   path: '/alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerformanceRoute = PerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -57,6 +63,7 @@ const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/alerts': typeof AlertsRoute
+  '/performance': typeof PerformanceRoute
   '/settings': typeof SettingsRoute
   '/wallets': typeof WalletsRoute
   '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/alerts': typeof AlertsRoute
+  '/performance': typeof PerformanceRoute
   '/settings': typeof SettingsRoute
   '/wallets': typeof WalletsRoute
   '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/alerts': typeof AlertsRoute
+  '/performance': typeof PerformanceRoute
   '/settings': typeof SettingsRoute
   '/wallets': typeof WalletsRoute
   '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/alerts'
+    | '/performance'
     | '/settings'
     | '/wallets'
     | '/api/public/collector-health'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/alerts'
+    | '/performance'
     | '/settings'
     | '/wallets'
     | '/api/public/collector-health'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/alerts'
+    | '/performance'
     | '/settings'
     | '/wallets'
     | '/api/public/collector-health'
@@ -115,6 +127,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlertsRoute: typeof AlertsRoute
+  PerformanceRoute: typeof PerformanceRoute
   SettingsRoute: typeof SettingsRoute
   WalletsRoute: typeof WalletsRoute
   ApiPublicCollectorHealthRoute: typeof ApiPublicCollectorHealthRoute
@@ -136,6 +149,13 @@ declare module '@tanstack/react-router' {
       path: '/alerts'
       fullPath: '/alerts'
       preLoaderRoute: typeof AlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/performance': {
+      id: '/performance'
+      path: '/performance'
+      fullPath: '/performance'
+      preLoaderRoute: typeof PerformanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -179,6 +199,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlertsRoute: AlertsRoute,
+  PerformanceRoute: PerformanceRoute,
   SettingsRoute: SettingsRoute,
   WalletsRoute: WalletsRoute,
   ApiPublicCollectorHealthRoute: ApiPublicCollectorHealthRoute,

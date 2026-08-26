@@ -13,9 +13,11 @@ export const Route = createFileRoute("/api/public/enrich")({
         if (unauthorized) return unauthorized;
 
         const { enrichRealTokens } = await import("@/lib/enrichment.server");
+        const { analyzeRealWallets } = await import("@/lib/wallets.server");
         try {
+          const wallets = await analyzeRealWallets();
           const result = await enrichRealTokens();
-          return Response.json({ ok: true, ...result });
+          return Response.json({ ok: true, wallets, ...result });
         } catch (error) {
           return Response.json(
             { ok: false, error: error instanceof Error ? error.message : "Erreur inconnue" },

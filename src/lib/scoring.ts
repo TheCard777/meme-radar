@@ -43,6 +43,8 @@ export interface SubScore {
   /** Points effectivement apportés (avant renormalisation), ou null. */
   points: number | null;
   detail: string;
+  /** Provenance de la donnée utilisée (jamais devinée). */
+  source: string;
 }
 
 export interface ScoringResult {
@@ -106,6 +108,7 @@ export function computeScore(
     weight: number,
     normalized: number | null,
     detail: string,
+    source: string,
   ) => {
     subScores.push({
       key,
@@ -114,12 +117,13 @@ export function computeScore(
       normalized,
       points: normalized === null ? null : Math.round((normalized * weight) / 100),
       detail,
+      source: normalized === null ? "indisponible" : source,
     });
   };
 
   // 1) Volume et accélération.
   if (input.volume24h === null) {
-    add("volume", "Volume / accélération", WEIGHTS.volume, null, "Volume indisponible");
+    add("volume", "Volume / accélération", WEIGHTS.volume, null, "Volume indisponible", "DEX Screener");
   } else {
     const base = ramp(input.volume24h, 5_000, 250_000);
     let normalized = base;
@@ -130,7 +134,7 @@ export function computeScore(
       normalized = 0.6 * base + 0.4 * ramp(acceleration, 1, 4);
       detail += ` · accélération ×${acceleration.toFixed(2)}`;
     }
-    add("volume", "Volume / accélération", WEIGHTS.volume, pct(normalized), detail);
+    add("volume", "Volume / accélération", WEIGHTS.volume, pct(normalized), detail, "DEX Screener");
   }
 
   // 2) Nouveaux acheteurs (transactions d'achat sur 1h).
@@ -140,6 +144,7 @@ export function computeScore(
     WEIGHTS.buyers,
     input.buyers1h === null ? null : pct(ramp(input.buyers1h, 10, 300)),
     input.buyers1h === null ? "Acheteurs indisponibles" : `${Math.round(input.buyers1h)} achats sur 1h`,
+    "DEX Screener (txns 1h)",
   );
 
   // 3) Smart wallets (null tant qu'aucune analyse de wallets n'est branchée).
@@ -151,6 +156,7 @@ export function computeScore(
     input.smartWallets === null
       ? "Analyse smart money non disponible"
       : `${input.smartWallets} wallet(s) suivi(s)`,
+    "Analyse on-chain des premiers acheteurs (RPC Solana)",
   );
 
   // 4) Liquidité.
@@ -162,6 +168,7 @@ export function computeScore(
     input.liquidityUsd === null
       ? "Liquidité indisponible"
       : `${Math.round(input.liquidityUsd)} $ de liquidité`,
+    "DEX Screener",
   );
 
   // 5) Répartition des holders (concentration top 10 : plus bas = mieux).
@@ -175,6 +182,7 @@ export function computeScore(
     input.holdersTop10Share === null
       ? "Concentration des holders indisponible"
       : `Top 10 = ${(input.holdersTop10Share * 100).toFixed(1)} % de l'offre`,
+    "RPC Solana (getTokenLargestAccounts)",
   );
 
   // 6) Créateur / historique (non résolu en V1 : reste explicitement inconnu).
@@ -186,11 +194,12 @@ export function computeScore(
     input.creatorHistory === null
       ? "Historique du créateur non résolu"
       : "Historique du créateur évalué",
+    "Non résolu en V1",
   );
 
   // 7) Vitesse de croissance (variation de prix récente, pondérée par la fraîcheur).
   if (input.priceChange1h === null) {
-    add("growth", "Vitesse de croissance", WEIGHTS.growth, null, "Variation 1h indisponible");
+    add("growth", "Vitesse de croissance", WEIGHTS.growth, null, "Variation 1h indisponible", "DEX Screener");
   } else {
     const move = ramp(input.priceChange1h, 0, 80);
     const freshness =
@@ -201,6 +210,7 @@ export function computeScore(
       WEIGHTS.growth,
       pct(0.7 * move + 0.3 * freshness),
       `Variation 1h ${input.priceChange1h.toFixed(1)} %`,
+      "DEX Screener",
     );
   }
 

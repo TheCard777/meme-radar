@@ -21,9 +21,12 @@ export type Database = {
           id: string
           is_simulated: boolean
           level: string
+          market_cap_at_alert: number | null
           message: string
+          price_usd_at_alert: number | null
           score: number
           token_id: string | null
+          token_mint: string | null
           token_symbol: string
         }
         Insert: {
@@ -32,9 +35,12 @@ export type Database = {
           id?: string
           is_simulated?: boolean
           level?: string
+          market_cap_at_alert?: number | null
           message: string
+          price_usd_at_alert?: number | null
           score?: number
           token_id?: string | null
+          token_mint?: string | null
           token_symbol: string
         }
         Update: {
@@ -43,9 +49,12 @@ export type Database = {
           id?: string
           is_simulated?: boolean
           level?: string
+          market_cap_at_alert?: number | null
           message?: string
+          price_usd_at_alert?: number | null
           score?: number
           token_id?: string | null
+          token_mint?: string | null
           token_symbol?: string
         }
         Relationships: [
@@ -148,38 +157,89 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_archive: {
+        Row: {
+          archived_at: string
+          id: string
+          rows_removed: number
+          table_name: string
+        }
+        Insert: {
+          archived_at?: string
+          id?: string
+          rows_removed?: number
+          table_name: string
+        }
+        Update: {
+          archived_at?: string
+          id?: string
+          rows_removed?: number
+          table_name?: string
+        }
+        Relationships: []
+      }
       smart_wallets: {
         Row: {
           address: string
           created_at: string
+          data_sufficient: boolean
+          early_entries: number
+          first_seen_at: string
           id: string
           is_simulated: boolean
           label: string | null
           last_active_at: string
+          median_multiple: number | null
+          reasons: Json
           simulated_pnl: number
+          smart_wallet_score: number | null
+          success_count: number
+          success_rate: number | null
+          tokens_tracked: number
           trade_count: number
+          updated_at: string
           win_rate: number
         }
         Insert: {
           address: string
           created_at?: string
+          data_sufficient?: boolean
+          early_entries?: number
+          first_seen_at?: string
           id?: string
           is_simulated?: boolean
           label?: string | null
           last_active_at?: string
+          median_multiple?: number | null
+          reasons?: Json
           simulated_pnl?: number
+          smart_wallet_score?: number | null
+          success_count?: number
+          success_rate?: number | null
+          tokens_tracked?: number
           trade_count?: number
+          updated_at?: string
           win_rate?: number
         }
         Update: {
           address?: string
           created_at?: string
+          data_sufficient?: boolean
+          early_entries?: number
+          first_seen_at?: string
           id?: string
           is_simulated?: boolean
           label?: string | null
           last_active_at?: string
+          median_multiple?: number | null
+          reasons?: Json
           simulated_pnl?: number
+          smart_wallet_score?: number | null
+          success_count?: number
+          success_rate?: number | null
+          tokens_tracked?: number
           trade_count?: number
+          updated_at?: string
           win_rate?: number
         }
         Relationships: []
@@ -191,6 +251,7 @@ export type Database = {
           id: string
           liquidity_usd: number
           market_cap: number
+          price_usd: number
           score: number
           token_id: string
           volume: number
@@ -201,6 +262,7 @@ export type Database = {
           id?: string
           liquidity_usd?: number
           market_cap?: number
+          price_usd?: number
           score?: number
           token_id: string
           volume?: number
@@ -211,6 +273,7 @@ export type Database = {
           id?: string
           liquidity_usd?: number
           market_cap?: number
+          price_usd?: number
           score?: number
           token_id?: string
           volume?: number
@@ -233,6 +296,7 @@ export type Database = {
           data_sufficient: boolean
           detection_signature: string | null
           detection_source: string
+          early_buyers_found: number
           holders_top10_share: number | null
           id: string
           is_simulated: boolean
@@ -258,6 +322,7 @@ export type Database = {
           updated_at: string
           volume_1h: number
           volume_24h: number
+          wallets_analyzed_at: string | null
         }
         Insert: {
           alert_level?: string
@@ -266,6 +331,7 @@ export type Database = {
           data_sufficient?: boolean
           detection_signature?: string | null
           detection_source?: string
+          early_buyers_found?: number
           holders_top10_share?: number | null
           id?: string
           is_simulated?: boolean
@@ -291,6 +357,7 @@ export type Database = {
           updated_at?: string
           volume_1h?: number
           volume_24h?: number
+          wallets_analyzed_at?: string | null
         }
         Update: {
           alert_level?: string
@@ -299,6 +366,7 @@ export type Database = {
           data_sufficient?: boolean
           detection_signature?: string | null
           detection_source?: string
+          early_buyers_found?: number
           holders_top10_share?: number | null
           id?: string
           is_simulated?: boolean
@@ -324,8 +392,53 @@ export type Database = {
           updated_at?: string
           volume_1h?: number
           volume_24h?: number
+          wallets_analyzed_at?: string | null
         }
         Relationships: []
+      }
+      wallet_token_entries: {
+        Row: {
+          amount_raw: number | null
+          block_time: string | null
+          created_at: string
+          entry_rank: number
+          id: string
+          mint_address: string
+          signature: string
+          token_id: string
+          wallet_address: string
+        }
+        Insert: {
+          amount_raw?: number | null
+          block_time?: string | null
+          created_at?: string
+          entry_rank?: number
+          id?: string
+          mint_address: string
+          signature: string
+          token_id: string
+          wallet_address: string
+        }
+        Update: {
+          amount_raw?: number | null
+          block_time?: string | null
+          created_at?: string
+          entry_rank?: number
+          id?: string
+          mint_address?: string
+          signature?: string
+          token_id?: string
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_token_entries_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wallet_trades: {
         Row: {
