@@ -10,8 +10,11 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "worker": "bun run src/collector/main.ts",
-    "test": "vitest run"
+    "worker": "node scripts/build-worker.mjs && node dist/worker.mjs",
+    "test": "vitest run",
+    "build:worker": "node scripts/build-worker.mjs",
+    "start:worker": "node dist/worker.mjs",
+    "worker:bun": "bun run src/collector/main.ts"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -78,6 +81,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "esbuild": "^0.28.2",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
@@ -90,5 +94,8 @@
     "typescript-eslint": "^8.56.1",
     "vite": "8.1.5",
     "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

@@ -81,7 +81,8 @@ export async function runCollectorWorker(): Promise<SolanaLogCollector> {
 }
 
 // Exécution directe uniquement (jamais lors d'un import par l'app web).
-if (process.argv[1] && process.argv[1].endsWith("main.ts")) {
+const entry = process.argv[1] ?? "";
+if (entry.endsWith("main.ts") || entry.endsWith("worker.mjs")) {
   void runCollectorWorker().catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`);
     process.exit(1);
