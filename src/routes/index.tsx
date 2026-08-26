@@ -39,11 +39,13 @@ function Dashboard() {
   const settings = useBotSettings();
 
   const loading = tokens.isLoading || alerts.isLoading || wallets.isLoading;
+  const realTokenCount = (tokens.data ?? []).filter((token) => !token.is_simulated).length;
+  const demoTokenCount = (tokens.data ?? []).filter((token) => token.is_simulated).length;
 
   return (
     <AppShell
       title="Radar des memecoins Solana"
-      subtitle="Détection, scoring et alertes — mode simulation, aucun ordre n’est passé."
+      subtitle="Observation Solana en lecture seule — données réelles et démo clairement distinguées, aucun ordre n’est passé."
     >
       {loading ? (
         <div className="space-y-4">
@@ -81,7 +83,10 @@ function Dashboard() {
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">Source des données</dt>
-                    <dd>Simulation</dd>
+                    <dd className="text-right">
+                      {realTokenCount > 0 ? `${realTokenCount} réels` : "Aucune donnée réelle"}
+                      {demoTokenCount > 0 ? ` · ${demoTokenCount} démo` : ""}
+                    </dd>
                   </div>
                 </dl>
               </section>

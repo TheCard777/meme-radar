@@ -9,12 +9,23 @@ export function OpportunityTable({
   tokens: TokenRow[];
   onSelect: (token: TokenRow) => void;
 }) {
+  const realCount = tokens.filter((token) => !token.is_simulated).length;
+  const demoCount = tokens.length - realCount;
+
   return (
     <section aria-label="Opportunités détectées" className="panel overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3 sm:px-5">
         <h2 className="text-base font-semibold">Opportunités détectées</h2>
-        <span className="rounded-full border border-warning/40 bg-warning/10 px-2.5 py-0.5 text-xs text-warning">
-          Données de simulation
+        <span
+          className={
+            realCount > 0
+              ? "rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-xs text-primary"
+              : "rounded-full border border-warning/40 bg-warning/10 px-2.5 py-0.5 text-xs text-warning"
+          }
+        >
+          {realCount > 0
+            ? `${realCount} réel${realCount > 1 ? "s" : ""}${demoCount > 0 ? ` · ${demoCount} démo` : ""}`
+            : `${demoCount} donnée${demoCount > 1 ? "s" : ""} démo`}
         </span>
       </div>
 
@@ -52,7 +63,12 @@ export function OpportunityTable({
                 className="cursor-pointer border-b border-border/60 outline-none transition-colors last:border-0 hover:bg-secondary/60 focus-visible:bg-secondary"
               >
                 <td className="px-5 py-3">
-                  <div className="font-medium">${token.symbol}</div>
+                  <div className="flex items-center gap-2 font-medium">
+                    <span>${token.symbol}</span>
+                    <span className={token.is_simulated ? "text-[10px] text-warning" : "text-[10px] text-primary"}>
+                      {token.is_simulated ? "DÉMO" : "RÉEL"}
+                    </span>
+                  </div>
                   <div className="text-xs text-muted-foreground">{token.name}</div>
                 </td>
                 <td className="px-3 py-3 text-right font-mono tabular-nums">
@@ -91,7 +107,12 @@ export function OpportunityTable({
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-medium">${token.symbol}</p>
+                  <p className="flex items-center gap-2 font-medium">
+                    <span>${token.symbol}</span>
+                    <span className={token.is_simulated ? "text-[10px] text-warning" : "text-[10px] text-primary"}>
+                      {token.is_simulated ? "DÉMO" : "RÉEL"}
+                    </span>
+                  </p>
                   <p className="text-xs text-muted-foreground">{token.name}</p>
                 </div>
                 <ScoreBadge score={token.score} />

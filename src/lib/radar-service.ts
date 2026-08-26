@@ -10,9 +10,8 @@ import type {
 } from "./radar-types";
 
 /**
- * Abstraction service — V1 lit uniquement des données de SIMULATION.
- * Quand le vrai scanner Solana sera branché côté serveur, il écrira dans
- * les mêmes tables et l'UI n'aura pas besoin d'être refaite.
+ * Abstraction de lecture unifiée : les lignes réelles du collecteur et les
+ * seeds de démonstration coexistent, distinguées par `is_simulated`.
  */
 
 export async function fetchBotSettings(): Promise<BotSettings> {
