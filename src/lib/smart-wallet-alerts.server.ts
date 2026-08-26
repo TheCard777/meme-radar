@@ -282,7 +282,7 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
       amountRaw: entry.amount_raw,
       marketCap: token?.market_cap ?? null,
       volume24h: token?.volume_24h ?? null,
-      buyers: token?.new_buyers ?? null,
+      buyers: buyersForToken(entry.token_id),
       launchedAt: token?.launched_at ?? null,
       signature: entry.signature,
     });
