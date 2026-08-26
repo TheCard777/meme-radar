@@ -21,14 +21,14 @@ import {
   PUMP_FUN_PROGRAM_ID,
   TRADING_ENABLED,
 } from "./constants";
-import { CollectorStore, type CollectorRuntimeState } from "./store";
+import type { CollectorRuntimeState, CollectorStorage } from "./store";
 
 export interface CollectorOptions {
   rpcUrl: string;
   wsUrl: string;
   /** Filtrer sur le program ID de lancement (désactivable). */
   programFilter: string | null;
-  store: CollectorStore;
+  store: CollectorStorage;
   log?: (entry: Record<string, unknown>) => void;
 }
 
