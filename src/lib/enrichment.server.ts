@@ -19,6 +19,12 @@ import {
   type MarketMetrics,
 } from "./market.server";
 import { sendAlertTelegram } from "./telegram.server";
+import {
+  matchesEarlyOpportunity,
+  readEarlyOpportunityConfig,
+  recordEarlyOpportunity,
+  type EarlyOpportunityConfig,
+} from "./early-opportunity.server";
 
 /** Délai minimal entre deux alertes pour un même token. */
 export const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
