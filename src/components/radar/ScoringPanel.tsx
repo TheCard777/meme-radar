@@ -8,8 +8,8 @@ import { useBotSettings } from "@/lib/radar-hooks";
 import type { TokenRow } from "@/lib/radar-types";
 
 /**
- * Enrichissement des tokens réels (données de marché) puis scoring /100.
- * Observation uniquement : aucun ordre n'est jamais passé.
+ * Enrichissement des tokens réels (données de marché + on-chain) puis scoring
+ * /100 renormalisé. Observation uniquement : aucun ordre n'est jamais passé.
  */
 export function ScoringPanel({ tokens }: { tokens: TokenRow[] }) {
   const run = useServerFn(runEnrichmentCycle);
@@ -18,9 +18,13 @@ export function ScoringPanel({ tokens }: { tokens: TokenRow[] }) {
   const [running, setRunning] = useState(false);
 
   const real = tokens.filter((t) => !t.is_simulated);
-  const scored = real.filter((t) => (t.last_enriched_at ?? null) !== null);
-  const withMarket = real.filter((t) => t.market_source && t.market_source !== "none");
+  const scored = real.filter((t) => t.data_sufficient);
+  const insufficient = real.filter((t) => (t.last_enriched_at ?? null) !== null && !t.data_sufficient);
+  const signals = real.filter((t) => t.data_sufficient && t.score >= 85);
+  const alerted = real.filter((t) => t.alert_level === "signal" || t.alert_level === "priority");
   const threshold = settings.data?.telegram_threshold ?? 85;
+  const critical = settings.data?.critical_threshold ?? 90;
+  const bestScore = scored.length > 0 ? Math.max(...scored.map((t) => t.score)) : null;
 
   async function handleRun() {
     setRunning(true);
@@ -31,9 +35,7 @@ export function ScoringPanel({ tokens }: { tokens: TokenRow[] }) {
         {
           description:
             result.telegramSkipped ??
-            (result.telegramSent > 0
-              ? `${result.telegramSent} envoi(s) Telegram · meilleur score ${result.topScore}/100`
-              : `Meilleur score ${result.topScore}/100 · ${result.withoutMarketData} sans données de marché`),
+            `Meilleur score ${result.topScore ?? "n/a"} · ${result.insufficientData} sans score fiable · ${result.withoutMarketData} sans marché`,
         },
       );
       await qc.invalidateQueries({ queryKey: ["tokens"] });
@@ -57,7 +59,8 @@ export function ScoringPanel({ tokens }: { tokens: TokenRow[] }) {
           <div>
             <h2 className="text-base font-semibold">Scoring des tokens réels</h2>
             <p className="text-xs text-muted-foreground">
-              Marché DEX Screener · score /100 · alerte Telegram ≥ {threshold}
+              Marché DEX Screener + holders on-chain · seuils : &lt;70 ignoré, 70-84 surveillé,{" "}
+              {threshold}-{critical - 1} SIGNAL, ≥{critical} PRIORITÉ
             </p>
           </div>
         </div>
@@ -69,18 +72,24 @@ export function ScoringPanel({ tokens }: { tokens: TokenRow[] }) {
           <dd className="font-mono">{real.length}</dd>
         </div>
         <div className="rounded-lg border border-border px-3 py-2">
-          <dt className="text-xs text-muted-foreground">Déjà scorés</dt>
+          <dt className="text-xs text-muted-foreground">Score fiable</dt>
           <dd className="font-mono">{scored.length}</dd>
         </div>
         <div className="rounded-lg border border-border px-3 py-2">
-          <dt className="text-xs text-muted-foreground">Avec données marché</dt>
-          <dd className="font-mono">{withMarket.length}</dd>
+          <dt className="text-xs text-muted-foreground">Données insuffisantes</dt>
+          <dd className="font-mono">{insufficient.length}</dd>
         </div>
         <div className="rounded-lg border border-border px-3 py-2">
           <dt className="text-xs text-muted-foreground">Meilleur score</dt>
-          <dd className="font-mono">
-            {real.length > 0 ? Math.max(...real.map((t) => t.score)) : 0}/100
-          </dd>
+          <dd className="font-mono">{bestScore === null ? "n/a" : `${bestScore}/100`}</dd>
+        </div>
+        <div className="rounded-lg border border-border px-3 py-2">
+          <dt className="text-xs text-muted-foreground">≥ {threshold} détectés</dt>
+          <dd className="font-mono">{signals.length}</dd>
+        </div>
+        <div className="rounded-lg border border-border px-3 py-2">
+          <dt className="text-xs text-muted-foreground">Alertes Telegram émises</dt>
+          <dd className="font-mono">{alerted.length}</dd>
         </div>
       </dl>
 
@@ -99,9 +108,15 @@ export function ScoringPanel({ tokens }: { tokens: TokenRow[] }) {
       </button>
 
       <p className="mt-3 text-xs text-muted-foreground">
-        Un cycle traite jusqu’à 30 tokens (les moins récemment enrichis d’abord). Les alertes
-        Telegram partent uniquement si le bot est actif et si le score atteint le seuil. Les tokens
-        démo ne sont jamais scorés ni alertés. Aucun trading.
+        Un cycle traite jusqu’à 30 tokens (les moins récemment enrichis d’abord). Les poids des
+        métriques manquantes sont renormalisés ; sans données suffisantes le score reste « n/a ».
+        Anti-spam : une alerte par token et par niveau, cooldown 30 min. Les tokens démo ne sont
+        jamais scorés ni alertés. Le score est un indicateur d’observation, pas une probabilité de
+        gain. Aucun trading.
+      </p>
+      <p className="mt-2 text-xs text-warning">
+        Le scoring continu tourne dans le processus collector externe : sans worker 24/7 lancé, il
+        ne s’exécute qu’à la demande via ce bouton.
       </p>
     </section>
   );
