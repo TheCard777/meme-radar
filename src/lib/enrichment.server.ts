@@ -185,6 +185,8 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
     telegramSent: 0,
     telegramSkipped: null,
     topScore: null,
+    earlyOpportunitiesCreated: 0,
+    earlyOpportunitiesTelegramSent: 0,
     errors,
     tradingEnabled: false,
   };
@@ -198,6 +200,7 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
     return result;
   }
 
+  const onChainBuyers = await countRealBuyers(tokens.map((t) => t.id));
   const now = new Date();
 
   for (const token of tokens) {
