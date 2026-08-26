@@ -13,7 +13,6 @@ export function SmartWalletAlertsPanel() {
   const alerts = useSmartWalletAlerts();
 
   const enabled = settings.data?.smart_wallet_alerts_enabled ?? true;
-  const threshold = settings.data?.smart_wallet_alert_threshold ?? 75;
   const recent = alerts.data ?? [];
 
   return (
