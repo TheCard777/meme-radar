@@ -119,3 +119,36 @@ export const setBotState = createServerFn({ method: "POST" })
             : "Arrêt de la surveillance demandé — données conservées.",
     };
   });
+
+/**
+ * Envoie une alerte Telegram de test (marquée comme simulation).
+ * Aucune donnée de trading, aucun secret exposé — retour booléen seulement.
+ */
+export const sendTestTelegramAlert = createServerFn({ method: "POST" }).handler(
+  async () => {
+    const { sendAlertTelegram, getTelegramStatus } = await import("./telegram.server");
+    const status = await getTelegramStatus();
+    if (!status.configured || !status.chatConfigured) {
+      return { sent: false as const, reason: status.message };
+    }
+    const result = await sendAlertTelegram({
+      symbol: "TEST",
+      score: 92,
+      level: "signal",
+      message: "Alerte de test Meme Radar — la configuration Telegram fonctionne.",
+      simulated: true,
+    });
+    if (result.sent) {
+      // Mémorise l'état de connexion dans bot_settings (simple indicateur).
+      try {
+        await serverSupabase()
+          .from("bot_settings")
+          .update({ telegram_connected: true } as never)
+          .not("id", "is", null);
+      } catch {
+        // non bloquant
+      }
+    }
+    return result;
+  },
+);
