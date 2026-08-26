@@ -10,8 +10,11 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "worker": "bun run src/collector/main.ts",
-    "test": "vitest run"
+    "worker": "node scripts/build-worker.mjs && node dist/worker.mjs",
+    "test": "vitest run",
+    "build:worker": "node scripts/build-worker.mjs",
+    "start:worker": "node dist/worker.mjs",
+    "worker:bun": "bun run src/collector/main.ts"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -91,5 +94,8 @@
     "typescript-eslint": "^8.56.1",
     "vite": "8.1.5",
     "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
