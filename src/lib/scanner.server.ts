@@ -14,12 +14,21 @@ export const TRADING_ENABLED = false as const;
 
 export type ScannerState = "not_configured" | "connected" | "unreachable" | "error";
 
+export type WebsocketState = "absent" | "configured" | "verified" | "failed";
+
 export interface ScannerStatus {
   state: ScannerState;
   /** Endpoint RPC masqué (host uniquement), jamais le token d'API. */
   endpoint: string | null;
   websocket: boolean;
+  /** Détail du canal temps réel : absent / configuré / handshake vérifié / échec. */
+  websocketState: WebsocketState;
+  websocketMessage: string;
   latencyMs: number | null;
+  /** Slot courant du cluster si la connexion est saine. */
+  slot: number | null;
+  /** Version du nœud si disponible. */
+  version: string | null;
   message: string;
   /** true tant que les données affichées proviennent des seeds de simulation. */
   demoData: boolean;
@@ -74,6 +83,80 @@ export class SolanaScannerConnection {
   async health(): Promise<string> {
     return this.rpcCall<string>("getHealth");
   }
+
+  async slot(): Promise<number> {
+    return this.rpcCall<number>("getSlot");
+  }
+
+  async version(): Promise<string | null> {
+    const res = await this.rpcCall<{ "solana-core"?: string }>("getVersion");
+    return res?.["solana-core"] ?? null;
+  }
+
+  /**
+   * Vérifie le canal temps réel sans souscrire à quoi que ce soit :
+   * simple handshake WebSocket, fermé immédiatement.
+   */
+  async checkWebsocket(timeoutMs = 4000): Promise<{ state: WebsocketState; message: string }> {
+    const url = this.config.wsUrl;
+    if (!url) {
+      return {
+        state: "absent",
+        message: "Aucune URL WebSocket configurée (SOLANA_WS_URL).",
+      };
+    }
+
+    // 1) Runtime Worker : upgrade via fetch.
+    try {
+      const res = await fetch(url.replace(/^ws/, "http"), {
+        headers: { Upgrade: "websocket" },
+      });
+      const socket = (res as unknown as { webSocket?: { accept: () => void; close: () => void } })
+        .webSocket;
+      if (res.status === 101 && socket) {
+        socket.accept();
+        socket.close();
+        return { state: "verified", message: "Handshake WebSocket temps réel vérifié." };
+      }
+    } catch {
+      // le runtime ne supporte pas l'upgrade via fetch → fallback ci-dessous
+    }
+
+    // 2) Runtime Node : constructeur WebSocket global.
+    const WS = (globalThis as { WebSocket?: new (url: string) => any }).WebSocket;
+    if (!WS) {
+      return {
+        state: "configured",
+        message: "URL WebSocket configurée (handshake non vérifiable sur ce runtime).",
+      };
+    }
+    return await new Promise((resolve) => {
+      let done = false;
+      const finish = (state: WebsocketState, message: string) => {
+        if (done) return;
+        done = true;
+        try {
+          ws.close();
+        } catch {
+          /* noop */
+        }
+        resolve({ state, message });
+      };
+      const ws = new WS(url);
+      const timer = setTimeout(
+        () => finish("failed", "Délai dépassé lors du handshake WebSocket."),
+        timeoutMs,
+      );
+      ws.onopen = () => {
+        clearTimeout(timer);
+        finish("verified", "Handshake WebSocket temps réel vérifié.");
+      };
+      ws.onerror = () => {
+        clearTimeout(timer);
+        finish("failed", "Connexion WebSocket refusée par le fournisseur.");
+      };
+    });
+  }
 }
 
 export async function getScannerStatus(): Promise<ScannerStatus> {
@@ -83,7 +166,11 @@ export async function getScannerStatus(): Promise<ScannerStatus> {
       state: "not_configured",
       endpoint: null,
       websocket: false,
+      websocketState: "absent",
+      websocketMessage: "Aucune URL WebSocket configurée (SOLANA_WS_URL).",
       latencyMs: null,
+      slot: null,
+      version: null,
       message:
         "Aucun fournisseur RPC Solana configuré. Le dashboard affiche des données de simulation.",
       demoData: true,
@@ -96,13 +183,24 @@ export async function getScannerStatus(): Promise<ScannerStatus> {
     const result = await connection.health();
     const latencyMs = Date.now() - startedAt;
     const ok = result === "ok";
+
+    const [ws, slot, version] = await Promise.all([
+      connection.checkWebsocket(),
+      connection.slot().catch(() => null),
+      connection.version().catch(() => null),
+    ]);
+
     return {
       state: ok ? "connected" : "unreachable",
       endpoint: maskEndpoint(config.rpcUrl),
-      websocket: Boolean(config.wsUrl),
+      websocket: ws.state === "verified" || ws.state === "configured",
+      websocketState: ws.state,
+      websocketMessage: ws.message,
       latencyMs,
+      slot,
+      version,
       message: ok
-        ? "Connexion RPC Solana opérationnelle (lecture seule)."
+        ? `Connexion RPC Solana opérationnelle en lecture seule (${latencyMs} ms${slot ? `, slot ${slot}` : ""}).`
         : `Le nœud RPC répond « ${result} ».`,
       demoData: !ok,
     };
@@ -110,8 +208,14 @@ export async function getScannerStatus(): Promise<ScannerStatus> {
     return {
       state: "error",
       endpoint: maskEndpoint(config.rpcUrl),
-      websocket: Boolean(config.wsUrl),
+      websocket: false,
+      websocketState: config.wsUrl ? "failed" : "absent",
+      websocketMessage: config.wsUrl
+        ? "WebSocket non vérifié : le RPC HTTP est en erreur."
+        : "Aucune URL WebSocket configurée (SOLANA_WS_URL).",
       latencyMs: null,
+      slot: null,
+      version: null,
       message: error instanceof Error ? error.message : "Erreur RPC inconnue",
       demoData: true,
     };
