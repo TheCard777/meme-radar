@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Activity, Bell, LineChart, Radar, Settings, Wallet } from "lucide-react";
+import { Bell, LineChart, Radar, Settings, Wallet } from "lucide-react";
 import { BotControl } from "./BotControl";
+import logoAsset from "@/assets/meme-radar-logo.png.asset.json";
 
 const NAV = [
   { to: "/", label: "Radar", icon: Radar },
