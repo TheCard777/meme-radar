@@ -1,12 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Activity, Bell, Radar, Settings, Wallet } from "lucide-react";
+import { Activity, Bell, LineChart, Radar, Settings, Wallet } from "lucide-react";
 import { BotControl } from "./BotControl";
 
 const NAV = [
   { to: "/", label: "Radar", icon: Radar },
   { to: "/wallets", label: "Smart Wallets", icon: Wallet },
   { to: "/alerts", label: "Alertes", icon: Bell },
+  { to: "/performance", label: "Performance", icon: LineChart },
   { to: "/settings", label: "Paramètres", icon: Settings },
 ] as const;
 

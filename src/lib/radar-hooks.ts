@@ -6,6 +6,9 @@ import {
   fetchSmartWallets,
   fetchTokens,
   fetchWalletTrades,
+  fetchDemoArchivedCount,
+  fetchWalletEntries,
+  fetchSnapshots,
   updateBotSettings,
 } from "./radar-service";
 import type { BotStatus, SignalCategories } from "./radar-types";
@@ -20,6 +23,15 @@ export const useSmartWallets = () =>
 
 export const useWalletTrades = () =>
   useQuery({ queryKey: ["wallet_trades"], queryFn: fetchWalletTrades });
+
+export const useDemoArchived = () =>
+  useQuery({ queryKey: ["demo_archive"], queryFn: fetchDemoArchivedCount });
+
+export const useWalletEntries = () =>
+  useQuery({ queryKey: ["wallet_entries"], queryFn: fetchWalletEntries });
+
+export const useSnapshots = () =>
+  useQuery({ queryKey: ["snapshots"], queryFn: fetchSnapshots });
 
 export const useAlerts = () => useQuery({ queryKey: ["alerts"], queryFn: fetchAlerts });
 
