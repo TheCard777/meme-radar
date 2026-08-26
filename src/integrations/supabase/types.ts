@@ -100,6 +100,54 @@ export type Database = {
         }
         Relationships: []
       }
+      collector_state: {
+        Row: {
+          desired_state: string
+          events_received: number
+          id: string
+          last_error: string | null
+          last_event_at: string | null
+          last_heartbeat_at: string | null
+          last_signature: string | null
+          reconnects: number
+          runtime_state: string
+          singleton: boolean
+          source: string
+          tokens_confirmed: number
+          updated_at: string
+        }
+        Insert: {
+          desired_state?: string
+          events_received?: number
+          id?: string
+          last_error?: string | null
+          last_event_at?: string | null
+          last_heartbeat_at?: string | null
+          last_signature?: string | null
+          reconnects?: number
+          runtime_state?: string
+          singleton?: boolean
+          source?: string
+          tokens_confirmed?: number
+          updated_at?: string
+        }
+        Update: {
+          desired_state?: string
+          events_received?: number
+          id?: string
+          last_error?: string | null
+          last_event_at?: string | null
+          last_heartbeat_at?: string | null
+          last_signature?: string | null
+          reconnects?: number
+          runtime_state?: string
+          singleton?: boolean
+          source?: string
+          tokens_confirmed?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       smart_wallets: {
         Row: {
           address: string
@@ -177,6 +225,8 @@ export type Database = {
       tokens: {
         Row: {
           created_at: string
+          detection_signature: string | null
+          detection_source: string
           id: string
           is_simulated: boolean
           launched_at: string
@@ -194,6 +244,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          detection_signature?: string | null
+          detection_source?: string
           id?: string
           is_simulated?: boolean
           launched_at?: string
@@ -211,6 +263,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          detection_signature?: string | null
+          detection_source?: string
           id?: string
           is_simulated?: boolean
           launched_at?: string
