@@ -119,7 +119,7 @@ export function SystemStatus() {
           icon={<ShieldCheck className="size-4" />}
           label="Trading automatique"
           value="Désactivé"
-          detail="Aucun achat, aucune vente, aucune clé privée. Détection et simulation uniquement."
+          detail="Aucun achat, aucune vente, aucune clé privée. Observation et scoring uniquement."
           tone="off"
         />
       </ul>
@@ -142,9 +142,8 @@ export function SystemStatus() {
 
       {live ? (
         <p className="mt-3 rounded-md border border-primary/30 bg-primary/10 p-3 text-xs text-primary">
-          Connexion mainnet Solana saine (lecture seule). Les tokens, wallets et alertes déjà
-          enregistrés restent toutefois des seeds de démonstration tant que le collecteur temps réel
-          n'écrit pas de nouvelles données.
+          Connexion mainnet Solana saine (lecture seule). Les nouvelles détections du collecteur sont
+          enregistrées comme réelles ; les seeds historiques restent étiquetés « démo ».
         </p>
       ) : null}
 

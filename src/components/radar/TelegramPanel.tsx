@@ -40,7 +40,7 @@ export function TelegramPanel() {
           </span>
           <div>
             <h2 className="text-base font-semibold">Alertes Telegram</h2>
-            <p className="text-xs text-muted-foreground">Notification des signaux ≥ seuil</p>
+            <p className="text-xs text-muted-foreground">Connexion validée · test manuel disponible</p>
           </div>
         </div>
         <span
@@ -111,7 +111,8 @@ export function TelegramPanel() {
 
       <p className="mt-3 text-xs text-muted-foreground">
         Les secrets sont stockés côté serveur uniquement et ne transitent jamais par le frontend.
-        Les alertes de test sont marquées comme simulation — aucun trading.
+        Telegram est prêt. Seul l’envoi automatique après scoring des tokens réels reste volontairement
+        désactivé pendant la validation du collecteur V1.
       </p>
     </section>
   );
