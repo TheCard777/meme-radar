@@ -69,6 +69,7 @@ function Dashboard() {
             alerts={alerts.data ?? []}
             wallets={wallets.data ?? []}
             demoArchived={demoArchived.data ?? 0}
+            totalTokens={totalTokens.data ?? realTokenCount}
           />
 
           <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
