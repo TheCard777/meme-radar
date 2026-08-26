@@ -17,6 +17,7 @@ import { Route as WalletsRouteImport } from './routes/wallets'
 import { Route as ApiPublicCollectorHealthRouteImport } from './routes/api/public/collector-health'
 import { Route as ApiPublicEnrichRouteImport } from './routes/api/public/enrich'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
+import { Route as ApiPublicWorkerActionRouteImport } from './routes/api/public/worker/$action'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -59,6 +60,11 @@ const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
   path: '/api/public/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWorkerActionRoute = ApiPublicWorkerActionRouteImport.update({
+  id: '/api/public/worker/$action',
+  path: '/api/public/worker/$action',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
   '/api/public/enrich': typeof ApiPublicEnrichRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/worker/$action': typeof ApiPublicWorkerActionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByTo {
   '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
   '/api/public/enrich': typeof ApiPublicEnrichRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/worker/$action': typeof ApiPublicWorkerActionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -90,6 +98,7 @@ export interface FileRoutesById {
   '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
   '/api/public/enrich': typeof ApiPublicEnrichRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/worker/$action': typeof ApiPublicWorkerActionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -102,6 +111,7 @@ export interface FileRouteTypes {
     | '/api/public/collector-health'
     | '/api/public/enrich'
     | '/api/public/health'
+    | '/api/public/worker/$action'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -112,6 +122,7 @@ export interface FileRouteTypes {
     | '/api/public/collector-health'
     | '/api/public/enrich'
     | '/api/public/health'
+    | '/api/public/worker/$action'
   id:
     | '__root__'
     | '/'
@@ -122,6 +133,7 @@ export interface FileRouteTypes {
     | '/api/public/collector-health'
     | '/api/public/enrich'
     | '/api/public/health'
+    | '/api/public/worker/$action'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -133,6 +145,7 @@ export interface RootRouteChildren {
   ApiPublicCollectorHealthRoute: typeof ApiPublicCollectorHealthRoute
   ApiPublicEnrichRoute: typeof ApiPublicEnrichRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
+  ApiPublicWorkerActionRoute: typeof ApiPublicWorkerActionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -193,6 +206,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/worker/$action': {
+      id: '/api/public/worker/$action'
+      path: '/api/public/worker/$action'
+      fullPath: '/api/public/worker/$action'
+      preLoaderRoute: typeof ApiPublicWorkerActionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -205,6 +225,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCollectorHealthRoute: ApiPublicCollectorHealthRoute,
   ApiPublicEnrichRoute: ApiPublicEnrichRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
+  ApiPublicWorkerActionRoute: ApiPublicWorkerActionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
