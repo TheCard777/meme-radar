@@ -210,9 +210,11 @@ export function OpportunityTable({
       <ul className="divide-y divide-border/60 md:hidden">
         {sortedTokens.map((token) => (
           <li key={token.id} className="relative">
-            <div className="absolute right-3 top-4 z-10">
+            <div className="absolute right-3 top-4 z-10 flex items-center gap-1.5">
+              <NowButton token={token} />
               <TrackBell token={token} />
             </div>
+
             <button
               type="button"
               onClick={() => onSelect(token)}
