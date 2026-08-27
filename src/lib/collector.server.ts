@@ -6,8 +6,8 @@
  * récent n'est reçu, l'état affiché est explicitement « worker externe requis ».
  */
 
-import { createClient } from "@supabase/supabase-js";
 import { STALE_HEARTBEAT_MS } from "@/collector/constants";
+
 
 export type CollectorRuntimeState =
   | "stopped"
