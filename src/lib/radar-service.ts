@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getBotSettingsServer, getDemoArchivedCountServer } from "./ops.functions";
+
 import type { SnapshotPoint } from "./performance";
 import type {
   AlertRow,
