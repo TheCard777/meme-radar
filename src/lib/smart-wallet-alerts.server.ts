@@ -261,18 +261,24 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
   const eligible = fresh.filter((entry) => {
     const token = tokenById.get(entry.token_id);
     if (!token) return false;
-    // Règle 3 : l'alerte doit rester « early entry » — token de moins de 2 h.
     const ageMinutes = (nowMs - new Date(token.launched_at).getTime()) / 60_000;
+    const buyers = buyersForToken(entry.token_id);
+    // Règles centralisées (score wallet, rang #2–#100, acheteurs, âge).
+    const ok = matchesSmartWalletEntry({
+      walletScore: scoreByWallet.get(entry.wallet_address) ?? 0,
+      entryRank: entry.entry_rank,
+      buyers,
+      ageMinutes,
+    });
+    if (ok) return true;
     if (!Number.isFinite(ageMinutes) || ageMinutes > MAX_TOKEN_AGE_MINUTES) {
       result.skippedTooOld += 1;
-      return false;
-    }
-    if (buyersForToken(entry.token_id) < MIN_TOKEN_BUYERS) {
+    } else if (buyers < MIN_TOKEN_BUYERS) {
       result.skippedFewBuyers += 1;
-      return false;
     }
-    return true;
+    return false;
   });
+
 
   const pending = eligible.slice(0, MAX_ALERTS_PER_CYCLE);
   if (pending.length === 0) return result;
