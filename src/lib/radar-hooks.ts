@@ -17,6 +17,8 @@ import {
 } from "./radar-service";
 import { updateBotSettingsServer } from "./settings.functions";
 import { toggleTrackedTokenServer } from "./tracking.functions";
+import { sendNowSnapshotServer } from "./now.functions";
+
 import type { BotStatus, SignalCategories } from "./radar-types";
 
 export const useBotSettings = () =>
