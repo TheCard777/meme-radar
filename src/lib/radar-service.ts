@@ -122,10 +122,9 @@ export async function fetchAlerts(): Promise<AlertRow[]> {
 
 /** Nombre total de lignes de démonstration archivées (retirées du flux). */
 export async function fetchDemoArchivedCount(): Promise<number> {
-  const { data, error } = await supabase.from("demo_archive").select("rows_removed");
-  if (error) throw error;
-  return (data ?? []).reduce((sum, row) => sum + (row.rows_removed ?? 0), 0);
+  return getDemoArchivedCountServer();
 }
+
 
 /** Entrées précoces réelles observées on-chain, par wallet. */
 export async function fetchWalletEntries(): Promise<
