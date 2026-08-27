@@ -54,3 +54,16 @@ describe("now snapshot", () => {
     expect(msg).toContain("non mesuré");
   });
 });
+
+describe("now snapshot — fraîcheur", () => {
+  it("affiche l'ancienneté des données non rafraîchies", () => {
+    const msg = buildNowSnapshotMessage({
+      ...base,
+      refreshedAt: new Date().toISOString(),
+      staleFields: [{ label: "risk score", ageMinutes: 42 }],
+    });
+    expect(msg).toContain("Données non rafraîchies à l'instant");
+    expect(msg).toContain("risk score — il y a 42 min");
+    expect(msg).toContain("rafraîchie à la demande");
+  });
+});
