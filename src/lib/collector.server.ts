@@ -33,29 +33,14 @@ export interface CollectorStatus {
   tradingEnabled: false;
 }
 
-function serviceClient() {
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-  return createClient(process.env["SUPABASE_URL"]!, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      fetch: (input: RequestInfo | URL, init?: RequestInit) => {
-        const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) {
-          h.delete("Authorization");
-        }
-        h.set("apikey", key);
-        return fetch(input, { ...init, headers: h });
-      },
-    },
-  });
-}
-
 export async function getCollectorStatus(): Promise<CollectorStatus> {
-  const { data, error } = await serviceClient()
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
     .from("collector_state")
     .select("*")
     .limit(1)
     .maybeSingle();
+
 
   const fallback: CollectorStatus = {
     desiredState: "stopped",
