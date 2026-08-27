@@ -18,19 +18,22 @@ export const Route = createFileRoute("/api/public/health")({
 
         let database = { ok: true, message: "ok" };
         try {
-          const url = process.env["SUPABASE_URL"];
-          const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
-          if (!url || !key) throw new Error("configuration manquante");
-          const res = await fetch(`${url}/rest/v1/bot_settings?select=status&limit=1`, {
-            headers: { apikey: key },
-          });
-          if (!res.ok) throw new Error(`REST ${res.status}`);
+          // `bot_settings` est réservée au service role : la clé publiable
+          // renverrait 401 (GRANT révoqué), ce qui fausserait le statut.
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { error } = await supabaseAdmin
+            .from("bot_settings")
+            .select("status")
+            .limit(1)
+            .maybeSingle();
+          if (error) throw new Error(error.message);
         } catch (error) {
           database = {
             ok: false,
             message: error instanceof Error ? error.message : "injoignable",
           };
         }
+
 
         return Response.json(
           {
