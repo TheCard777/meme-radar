@@ -27,7 +27,12 @@ export type NowSnapshotInput = {
   topFactors: Array<{ label: string; detail?: string }>;
   pairUrl: string | null;
   isSimulated: boolean;
+  /** Horodatage du rafraîchissement à la demande. */
+  refreshedAt?: string;
+  /** Données non rafraîchissables à l'instant : valeur reprise + ancienneté. */
+  staleFields?: Array<{ label: string; ageMinutes: number }>;
 };
+
 
 const UNKNOWN = "inconnu";
 
@@ -107,6 +112,15 @@ export function buildNowSnapshotMessage(input: NowSnapshotInput): string {
     lines.push("", `❔ Données non mesurées : ${missing.join(", ")}.`);
   }
 
+  if (input.staleFields && input.staleFields.length > 0) {
+    lines.push(
+      "",
+      "🕓 Données non rafraîchies à l'instant (dernière valeur connue) :",
+      ...input.staleFields.map((f) => `• ${f.label} — il y a ${f.ageMinutes} min`),
+    );
+  }
+
+
   if (input.isSimulated) {
     lines.push("", "⚠️ Donnée de démonstration — pas une donnée on-chain réelle.");
   }
@@ -116,8 +130,11 @@ export function buildNowSnapshotMessage(input: NowSnapshotInput): string {
     `🔗 DEX : ${input.pairUrl ?? `https://dexscreener.com/solana/${input.mint}`}`,
     `🔗 Explorer : https://solscan.io/token/${input.mint}`,
     "",
-    "Analyse ponctuelle — observation uniquement, aucun trading automatique.",
+    input.refreshedAt
+      ? `Analyse ponctuelle rafraîchie à la demande (${new Date(input.refreshedAt).toISOString().slice(11, 16)} UTC) — observation uniquement, aucun trading automatique.`
+      : "Analyse ponctuelle — observation uniquement, aucun trading automatique.",
   );
+
 
   return lines.join("\n");
 }
