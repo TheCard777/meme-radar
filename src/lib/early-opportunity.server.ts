@@ -210,7 +210,11 @@ export function buildEarlyOpportunityMessage(
       : `💪 Early Strength : ${strength.score}/100 (${strength.passed}/${strength.measured} critères Early mesurés satisfaits)`,
     "",
     `👥 Acheteurs : ${candidate.buyers} (fenêtre ${config.minBuyers}–${config.maxBuyers})`,
-    `💧 Liquidité : ${candidate.liquidityUsd !== null ? formatUsd(candidate.liquidityUsd) : "inconnue"} (min ${formatUsd(config.minLiquidityUsd)})`,
+    `💧 Liquidité : ${
+      normalizeLiquidityUsd(candidate.liquidityUsd) !== null
+        ? `${formatUsd(candidate.liquidityUsd as number)}${config.minLiquidityUsd > 0 ? ` (min ${formatUsd(config.minLiquidityUsd)})` : ""}`
+        : "non mesurée (pas de pool DEX — Pump.fun pré-migration)"
+    }`,
     `📈 Volume 1h : ${candidate.volume1h !== null ? formatUsd(candidate.volume1h) : "inconnu"} (min ${formatUsd(config.minVolume1hUsd)})`,
     `⚡ Accélération : ${acceleration !== null ? `${acceleration.toFixed(1)}x` : "inconnue"} (min ${config.accelerationFactor}x)`,
     `⏱️ Âge : ${ageLabel} (max ${Math.round(config.maxAgeMinutes / 60)} h)`,
