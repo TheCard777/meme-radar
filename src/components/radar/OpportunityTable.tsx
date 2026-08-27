@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
 import { RiskBadge } from "./RiskBadge";
+import { TrackBell } from "./TrackBell";
 
 type SortMode = "score" | "newest";
 
@@ -128,6 +129,7 @@ export function OpportunityTable({
               <th scope="col" className="px-3 py-3 text-right font-medium">Risque</th>
               <th scope="col" className="px-3 py-3 text-right font-medium">Âge</th>
               <th scope="col" className="px-5 py-3 font-medium">Statut</th>
+              <th scope="col" className="px-3 py-3 text-right font-medium">Suivi</th>
             </tr>
           </thead>
           <tbody>
@@ -189,6 +191,9 @@ export function OpportunityTable({
                     </span>
                   </div>
                 </td>
+                <td className="px-3 py-3 text-right">
+                  <TrackBell token={token} />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -198,11 +203,14 @@ export function OpportunityTable({
       {/* Mobile */}
       <ul className="divide-y divide-border/60 md:hidden">
         {sortedTokens.map((token) => (
-          <li key={token.id}>
+          <li key={token.id} className="relative">
+            <div className="absolute right-3 top-4 z-10">
+              <TrackBell token={token} />
+            </div>
             <button
               type="button"
               onClick={() => onSelect(token)}
-              className="w-full px-4 py-4 text-left transition-colors hover:bg-secondary/60"
+              className="w-full px-4 py-4 pr-14 text-left transition-colors hover:bg-secondary/60"
             >
               <div className="flex items-center justify-between gap-3">
                 <div>

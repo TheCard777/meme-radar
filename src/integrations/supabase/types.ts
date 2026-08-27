@@ -592,6 +592,119 @@ export type Database = {
         }
         Relationships: []
       }
+      tracked_token_alerts: {
+        Row: {
+          created_at: string
+          details: Json
+          event_state: string
+          event_type: string
+          id: string
+          message: string
+          severity: string
+          telegram_error: string | null
+          telegram_sent: boolean
+          token_id: string | null
+          token_mint: string
+          token_symbol: string | null
+          tracked_token_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          event_state?: string
+          event_type: string
+          id?: string
+          message: string
+          severity?: string
+          telegram_error?: string | null
+          telegram_sent?: boolean
+          token_id?: string | null
+          token_mint: string
+          token_symbol?: string | null
+          tracked_token_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          event_state?: string
+          event_type?: string
+          id?: string
+          message?: string
+          severity?: string
+          telegram_error?: string | null
+          telegram_sent?: boolean
+          token_id?: string | null
+          token_mint?: string
+          token_symbol?: string | null
+          tracked_token_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracked_token_alerts_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tracked_token_alerts_tracked_token_id_fkey"
+            columns: ["tracked_token_id"]
+            isOneToOne: false
+            referencedRelation: "tracked_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tracked_tokens: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          last_evaluated_at: string | null
+          last_metrics: Json
+          last_state: string
+          token_id: string | null
+          token_mint: string
+          token_name: string | null
+          token_symbol: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_evaluated_at?: string | null
+          last_metrics?: Json
+          last_state?: string
+          token_id?: string | null
+          token_mint: string
+          token_name?: string | null
+          token_symbol?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_evaluated_at?: string | null
+          last_metrics?: Json
+          last_state?: string
+          token_id?: string | null
+          token_mint?: string
+          token_name?: string | null
+          token_symbol?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracked_tokens_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wallet_token_entries: {
         Row: {
           amount_raw: number | null

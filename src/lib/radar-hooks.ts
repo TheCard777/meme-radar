@@ -12,8 +12,11 @@ import {
   fetchWalletEntries,
   fetchWalletTrades,
   fetchSnapshots,
+  fetchTrackedTokens,
+  fetchTrackedTokenAlerts,
 } from "./radar-service";
 import { updateBotSettingsServer } from "./settings.functions";
+import { toggleTrackedTokenServer } from "./tracking.functions";
 import type { BotStatus, SignalCategories } from "./radar-types";
 
 export const useBotSettings = () =>
@@ -65,6 +68,39 @@ export function useUpdateSettings() {
     },
     onError: (error: Error) => {
       toast.error("Mise à jour impossible", { description: error.message });
+    },
+  });
+}
+
+/* ---------- suivi individuel des tokens (cloche 🔔) ---------- */
+
+export const useTrackedTokens = () =>
+  useQuery({ queryKey: ["tracked_tokens"], queryFn: fetchTrackedTokens });
+
+export const useTrackedTokenAlerts = () =>
+  useQuery({ queryKey: ["tracked_token_alerts"], queryFn: fetchTrackedTokenAlerts });
+
+export function useToggleTrackedToken() {
+  const qc = useQueryClient();
+  const toggle = useServerFn(toggleTrackedTokenServer);
+  return useMutation({
+    mutationFn: async (input: {
+      tokenId: string;
+      mint: string;
+      symbol: string | null;
+      name: string | null;
+      enabled: boolean;
+    }) => toggle({ data: input }),
+    onSuccess: (_result, variables) => {
+      void qc.invalidateQueries({ queryKey: ["tracked_tokens"] });
+      toast.success(variables.enabled ? "Suivi activé" : "Suivi désactivé", {
+        description: variables.enabled
+          ? "Tu recevras une alerte Telegram en cas de changement significatif."
+          : "Plus aucune alerte personnalisée ne sera envoyée pour ce token.",
+      });
+    },
+    onError: (error: Error) => {
+      toast.error("Suivi impossible", { description: error.message });
     },
   });
 }

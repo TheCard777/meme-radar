@@ -22,6 +22,7 @@ import {
 } from "./early-opportunity.server";
 import { assessTokenRisk, type TokenRiskAssessment } from "./risk.server";
 import { summarizeRisk } from "./risk-scoring";
+import { evaluateTrackedToken, loadEnabledTrackedTokens } from "./token-tracking.server";
 
 /** Délai minimal entre deux alertes pour un même token. */
 export const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
@@ -39,6 +40,10 @@ export interface EnrichmentResult {
   earlyOpportunitiesCreated: number;
   /** Messages Telegram « Early Opportunity » réellement envoyés. */
   earlyOpportunitiesTelegramSent: number;
+  /** Alertes « token suivi » (cloche) créées pendant ce cycle. */
+  trackedAlertsCreated: number;
+  /** Messages Telegram « token suivi » réellement envoyés. */
+  trackedAlertsTelegramSent: number;
   errors: string[];
   tradingEnabled: false;
 }
@@ -203,6 +208,8 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
     topScore: null,
     earlyOpportunitiesCreated: 0,
     earlyOpportunitiesTelegramSent: 0,
+    trackedAlertsCreated: 0,
+    trackedAlertsTelegramSent: 0,
     errors,
     tradingEnabled: false,
   };
@@ -217,6 +224,8 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
   }
 
   const onChainBuyers = await countRealBuyers(tokens.map((t) => t.id));
+  // Cloche 🔔 : tokens dont le suivi personnalisé est actif (peut être vide).
+  const trackedTokens = await loadEnabledTrackedTokens();
   const now = new Date();
 
   for (const token of tokens) {
@@ -391,6 +400,47 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
         if (outcome.error) errors.push(`early-opportunity ${token.mint_address}: ${outcome.error}`);
       }
     }
+
+    // ---- Alerte « Token suivi » (cloche 🔔) — uniquement si le suivi est actif.
+    // Réutilise les métriques réelles de ce cycle : aucun second WebSocket.
+    {
+      const tracked = trackedTokens.get(token.mint_address);
+      if (tracked && tracked.enabled) {
+        try {
+          const outcome = await evaluateTrackedToken({
+            tracked,
+            tokenId: token.id,
+            mint: token.mint_address,
+            symbol,
+            name: metrics.name ?? token.name,
+            pairUrl: metrics.pairUrl ?? null,
+            sendTelegram: settings.botActive,
+            current: {
+              score: scoring.score,
+              volume1h: metrics.volume1h ?? null,
+              buyers: Math.max(
+                Math.round(metrics.buyers1h ?? 0),
+                onChainBuyers.get(token.id) ?? 0,
+              ),
+              liquidityUsd: metrics.liquidityUsd ?? null,
+              smartWallets: token.smart_wallet_count,
+              riskScore: assessment?.risk.score ?? null,
+              riskLevel: assessment?.risk.level ?? null,
+              priceChange1h: metrics.priceChange1h ?? null,
+            },
+          });
+          result.trackedAlertsCreated += outcome.events;
+          result.trackedAlertsTelegramSent += outcome.telegramSent;
+          if (outcome.error) errors.push(`tracked ${token.mint_address}: ${outcome.error}`);
+        } catch (trackedError) {
+          errors.push(
+            `tracked ${token.mint_address}: ${trackedError instanceof Error ? trackedError.message : String(trackedError)}`,
+          );
+        }
+      }
+    }
+
+
 
 
     if (scoring.level !== "signal" && scoring.level !== "priority") continue;

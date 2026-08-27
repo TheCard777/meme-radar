@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAlerts } from "@/lib/radar-hooks";
 import { formatAge } from "@/lib/radar-service";
 import { ScoreBadge } from "@/components/radar/ScoreBadge";
+import { TrackedTokensPanel } from "@/components/radar/TrackedTokensPanel";
 
 export const Route = createFileRoute("/alerts")({
   head: () => ({
@@ -38,6 +39,10 @@ function AlertsPage() {
       title="Historique des alertes"
       subtitle="Toutes les alertes générées par le scoring — simulation uniquement."
     >
+      <div className="mb-6">
+        <TrackedTokensPanel />
+      </div>
+
       {alerts.isLoading ? (
         <Skeleton className="h-96 w-full" />
       ) : (

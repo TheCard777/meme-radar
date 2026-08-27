@@ -157,3 +157,53 @@ export async function fetchSnapshots(): Promise<SnapshotPoint[]> {
 /* ---------- helpers d'affichage ---------- */
 
 export { formatAge, formatUsd, shortAddress } from "./radar-service-format";
+
+/* ---------- suivi individuel des tokens (cloche) ---------- */
+
+export type TrackedTokenRow = {
+  id: string;
+  token_id: string | null;
+  token_mint: string;
+  token_symbol: string | null;
+  token_name: string | null;
+  enabled: boolean;
+  last_state: string;
+  last_evaluated_at: string | null;
+  created_at: string;
+};
+
+export async function fetchTrackedTokens(): Promise<TrackedTokenRow[]> {
+  const { data, error } = await supabase
+    .from("tracked_tokens")
+    .select(
+      "id, token_id, token_mint, token_symbol, token_name, enabled, last_state, last_evaluated_at, created_at",
+    )
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  return (data ?? []) as unknown as TrackedTokenRow[];
+}
+
+export type TrackedTokenAlertRow = {
+  id: string;
+  token_mint: string;
+  token_symbol: string | null;
+  event_type: string;
+  event_state: string;
+  severity: string;
+  message: string;
+  telegram_sent: boolean;
+  created_at: string;
+};
+
+export async function fetchTrackedTokenAlerts(): Promise<TrackedTokenAlertRow[]> {
+  const { data, error } = await supabase
+    .from("tracked_token_alerts")
+    .select(
+      "id, token_mint, token_symbol, event_type, event_state, severity, message, telegram_sent, created_at",
+    )
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data ?? []) as unknown as TrackedTokenAlertRow[];
+}
