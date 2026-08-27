@@ -56,27 +56,29 @@ export function SmartWalletAlertsPanel() {
         <span className="font-mono text-primary">Smart Wallet score ≥65</span> +{" "}
         <span className="font-mono text-primary">token ≤2 h</span> +{" "}
         <span className="font-mono text-primary">entrée #2 à #100</span> +{" "}
-        <span className="font-mono text-primary">token ≥60 acheteurs</span>. Le{" "}
+        <span className="font-mono text-primary">token ≥100 acheteurs</span>. Le{" "}
         <span className="font-mono">#1</span> est exclu (créateur / acheteur initial). Si le token
-        n’a pas encore 60 acheteurs, l’alerte est différée : les entrées qualifiées sont réévaluées
+        n’a pas encore 100 acheteurs, l’alerte est différée : les entrées qualifiées sont réévaluées
         à chaque cycle et notifiées dès le seuil atteint, tant que le token reste dans sa fenêtre de
         2 h. Une seule alerte par wallet et par token, même en cas de rachat.
       </p>
 
       <p className="mt-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
         <span className="font-semibold">Meme Radar — Early Opportunity</span> (alerte distincte) —{" "}
-        <span className="font-mono text-primary">âge &lt;2 h</span> +{" "}
-        <span className="font-mono text-primary">60–100 acheteurs</span> +{" "}
-        <span className="font-mono text-primary">liquidité ≥20 000 $</span> +{" "}
-        <span className="font-mono text-primary">volume 1h ≥30 000 $</span> +{" "}
-        <span className="font-mono text-primary">accélération ≥2×</span> (volume des 5 dernières
+        <span className="font-mono text-primary">âge ≤2 h</span> +{" "}
+        <span className="font-mono text-primary">60–150 acheteurs</span> +{" "}
+        <span className="font-mono text-primary">volume 1h ≥5 000 $</span> +{" "}
+        <span className="font-mono text-primary">accélération ≥1,5×</span> (volume des 5 dernières
         minutes rapporté au rythme de l’heure, uniquement si la donnée est réellement mesurable —
-        sinon marquée « inconnue »). Aucun seuil de score : le score Radar est affiché à titre
-        informatif. Déclenchée côté serveur dans le pipeline d’enrichissement, indépendamment des
-        1000 tokens affichés. Un seul envoi par token, mais les critères sont réévalués à chaque
-        cycle pendant toute la fenêtre de 2 h. Le message Telegram indique l’Early Strength calculée
-        sur les seuls critères mesurés.
+        sinon marquée « inconnue »). Aucun minimum de liquidité : les tokens Pump.fun pré-migration
+        n’ont pas de pool DEX, la liquidité est alors indiquée « non mesurée » et jamais présentée
+        comme un 0 réel. Aucun seuil de score : le score Radar est affiché à titre informatif.
+        Déclenchée côté serveur dans le pipeline d’enrichissement, indépendamment des 1000 tokens
+        affichés. Un seul envoi par token, mais les critères sont réévalués à chaque cycle pendant
+        toute la fenêtre de 2 h. Le message Telegram indique l’Early Strength calculée sur les seuls
+        critères mesurés.
       </p>
+
 
 
 

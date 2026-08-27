@@ -16,6 +16,7 @@ import { fetchMarketMetrics, MARKET_BATCH_SIZE, type MarketMetrics } from "./mar
 import { sendAlertTelegram } from "./telegram.server";
 import {
   matchesEarlyOpportunity,
+  normalizeLiquidityUsd,
   readEarlyOpportunityConfig,
   recordEarlyOpportunity,
   type EarlyOpportunityConfig,
