@@ -250,6 +250,19 @@ export function OpportunityTable({
           </li>
         ))}
       </ul>
+
+      {sortedTokens.length === 0 && (
+        <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+          {normalizedSearch ? (
+            <>
+              <p className="font-medium">Aucune opportunité ne correspond à « {search.trim()} »</p>
+              <p className="mt-1 text-xs">Essaye un autre symbole, nom ou adresse mint.</p>
+            </>
+          ) : (
+            <p>Aucune opportunité détectée pour le moment.</p>
+          )}
+        </div>
+      )}
     </section>
   );
 }
