@@ -30,12 +30,26 @@ import { formatUsd } from "./radar-service-format";
 export const EARLY_OPPORTUNITY_DEFAULTS = {
   enabled: true,
   minBuyers: 60,
-  maxBuyers: 100,
+  maxBuyers: 150,
   maxAgeMinutes: 120,
-  minLiquidityUsd: 20_000,
-  minVolume1hUsd: 30_000,
-  accelerationFactor: 2,
+  /** 0 = aucun minimum de liquidité (les Pump.fun pré-migration n'ont pas de pool). */
+  minLiquidityUsd: 0,
+  minVolume1hUsd: 5_000,
+  accelerationFactor: 1.5,
 } as const;
+
+/**
+ * DEX Screener renvoie `0` (ou rien) pour les tokens Pump.fun encore sur bonding
+ * curve : il n'existe pas de pool à mesurer. Ce 0 n'est PAS une liquidité réelle
+ * mesurée, il est donc converti en « non mesurée » (null) et n'apparaît jamais
+ * comme une valeur chiffrée dans les alertes.
+ */
+export function normalizeLiquidityUsd(value: number | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return value;
+}
+
 
 export interface EarlyOpportunityConfig {
   enabled: boolean;
