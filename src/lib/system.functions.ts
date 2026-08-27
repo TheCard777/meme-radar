@@ -57,11 +57,15 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       if (error) throw error;
       botStatus = (data?.status as SystemHealth["botStatus"]) ?? "unknown";
     } catch (error) {
+      const raw = error instanceof Error ? error.message : String(error);
       database = {
         ok: false,
-        message: error instanceof Error ? error.message : "Base injoignable",
+        message: /permission denied|42501/i.test(raw)
+          ? `Accès refusé sur bot_settings (droits base de données) : ${raw}`
+          : `Base injoignable : ${raw}`,
       };
     }
+
 
     return {
       tradingEnabled: false,
