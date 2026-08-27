@@ -53,9 +53,30 @@ export function OpportunityTable({
 
   return (
     <section aria-label="Opportunités détectées" className="panel overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
         <h2 className="text-base font-semibold">Opportunités détectées</h2>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher un token, nom ou mint…"
+              aria-label="Rechercher une opportunité"
+              className="h-8 w-full pl-8 pr-7 text-xs sm:w-64"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Effacer la recherche"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            )}
+          </div>
           <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortMode)}>
             <SelectTrigger
               aria-label="Trier les opportunités"
@@ -83,6 +104,7 @@ export function OpportunityTable({
             {realCount > 0
               ? `${realCount} réel${realCount > 1 ? "s" : ""}${demoCount > 0 ? ` · ${demoCount} démo` : ""}`
               : `${demoCount} donnée${demoCount > 1 ? "s" : ""} démo`}
+            {normalizedSearch && totalCount > 0 ? ` · ${filteredTokens.length}/${totalCount}` : null}
           </span>
         </div>
       </div>
