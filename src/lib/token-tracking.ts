@@ -158,9 +158,8 @@ export function detectTrackedEvents(params: {
 
   // 1) Changement d'état de momentum (intact -> prudence, etc.)
   if (state !== "unknown" && state !== previousState) {
-    const worsening =
-      (RISK_ORDER["x"] ?? 0, ["accelerating", "stable", "caution", "degrading"].indexOf(state)) >
-      ["accelerating", "stable", "caution", "degrading"].indexOf(previousState);
+    const order: MomentumState[] = ["accelerating", "stable", "caution", "degrading"];
+    const worsening = order.indexOf(state) > order.indexOf(previousState);
     events.push({
       type: "momentum_state",
       state,
