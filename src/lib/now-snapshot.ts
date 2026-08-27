@@ -112,6 +112,15 @@ export function buildNowSnapshotMessage(input: NowSnapshotInput): string {
     lines.push("", `❔ Données non mesurées : ${missing.join(", ")}.`);
   }
 
+  if (input.staleFields && input.staleFields.length > 0) {
+    lines.push(
+      "",
+      "🕓 Données non rafraîchies à l'instant (dernière valeur connue) :",
+      ...input.staleFields.map((f) => `• ${f.label} — il y a ${f.ageMinutes} min`),
+    );
+  }
+
+
   if (input.isSimulated) {
     lines.push("", "⚠️ Donnée de démonstration — pas une donnée on-chain réelle.");
   }
