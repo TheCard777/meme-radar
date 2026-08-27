@@ -139,12 +139,14 @@ export function computeEarlyStrength(
   config: EarlyOpportunityConfig,
 ): EarlyStrength {
   const acceleration = computeAcceleration(candidate);
+  const liquidity = normalizeLiquidityUsd(candidate.liquidityUsd);
   const checks: (boolean | null)[] = [
     Number.isFinite(candidate.ageMinutes) ? candidate.ageMinutes <= config.maxAgeMinutes : null,
     Number.isFinite(candidate.buyers)
       ? candidate.buyers >= config.minBuyers && candidate.buyers <= config.maxBuyers
       : null,
-    candidate.liquidityUsd === null ? null : candidate.liquidityUsd >= config.minLiquidityUsd,
+    // Critère liquidité évalué uniquement s'il est configuré ET réellement mesuré.
+    config.minLiquidityUsd > 0 && liquidity !== null ? liquidity >= config.minLiquidityUsd : null,
     candidate.volume1h === null ? null : candidate.volume1h >= config.minVolume1hUsd,
     acceleration === null ? null : acceleration >= config.accelerationFactor,
   ];
@@ -163,6 +165,8 @@ export function computeEarlyStrength(
  * Vérifie les conditions de traction précoce. Aucun effet de bord.
  * Le score Radar n'intervient pas : il est purement informatif.
  * L'accélération n'est bloquante que si elle est mesurable.
+ * La liquidité n'est bloquante que si un minimum est configuré ET que la valeur
+ * est réellement mesurée (les Pump.fun pré-migration n'ont pas de pool).
  */
 export function matchesEarlyOpportunity(
   candidate: EarlyOpportunityCandidate,
@@ -171,7 +175,9 @@ export function matchesEarlyOpportunity(
   if (!config.enabled) return false;
   if (candidate.ageMinutes > config.maxAgeMinutes) return false;
   if (candidate.buyers < config.minBuyers || candidate.buyers > config.maxBuyers) return false;
-  if (candidate.liquidityUsd === null || candidate.liquidityUsd < config.minLiquidityUsd) {
+
+  const liquidity = normalizeLiquidityUsd(candidate.liquidityUsd);
+  if (config.minLiquidityUsd > 0 && liquidity !== null && liquidity < config.minLiquidityUsd) {
     return false;
   }
   if (candidate.volume1h === null || candidate.volume1h < config.minVolume1hUsd) return false;
@@ -180,6 +186,7 @@ export function matchesEarlyOpportunity(
   if (acceleration !== null && acceleration < config.accelerationFactor) return false;
   return true;
 }
+
 
 export function buildEarlyOpportunityMessage(
   candidate: EarlyOpportunityCandidate,
