@@ -193,9 +193,13 @@ export function OpportunityTable({
                     </span>
                   </div>
                 </td>
-                <td className="px-3 py-3 text-right">
-                  <TrackBell token={token} />
+                <td className="px-3 py-3">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <NowButton token={token} />
+                    <TrackBell token={token} />
+                  </div>
                 </td>
+
               </tr>
             ))}
           </tbody>
