@@ -218,7 +218,7 @@ export function OpportunityTable({
             <button
               type="button"
               onClick={() => onSelect(token)}
-              className="w-full px-4 py-4 pr-14 text-left transition-colors hover:bg-secondary/60"
+              className="w-full px-4 py-4 pr-32 text-left transition-colors hover:bg-secondary/60"
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
