@@ -106,3 +106,21 @@ export function useToggleTrackedToken() {
     },
   });
 }
+
+/* ---------- analyse ponctuelle (⚡ NOW) ---------- */
+
+export function useSendNowSnapshot() {
+  const sendNow = useServerFn(sendNowSnapshotServer);
+  return useMutation({
+    mutationFn: async (input: { mint: string; symbol: string }) =>
+      sendNow({ data: { mint: input.mint } }),
+    onSuccess: (_result, variables) => {
+      toast.success("Analyse NOW envoyée", {
+        description: `Snapshot de $${variables.symbol} envoyé sur Telegram.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast.error("Envoi NOW impossible", { description: error.message });
+    },
+  });
+}
