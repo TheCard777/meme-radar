@@ -392,6 +392,47 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       }
     }
 
+    // ---- Alerte « Token suivi » (cloche 🔔) — uniquement si le suivi est actif.
+    // Réutilise les métriques réelles de ce cycle : aucun second WebSocket.
+    {
+      const tracked = trackedTokens.get(token.mint_address);
+      if (tracked && tracked.enabled) {
+        try {
+          const outcome = await evaluateTrackedToken({
+            tracked,
+            tokenId: token.id,
+            mint: token.mint_address,
+            symbol,
+            name: metrics.name ?? token.name,
+            pairUrl: metrics.pairUrl ?? null,
+            sendTelegram: settings.botActive,
+            current: {
+              score: scoring.score,
+              volume1h: metrics.volume1h ?? null,
+              buyers: Math.max(
+                Math.round(metrics.buyers1h ?? 0),
+                onChainBuyers.get(token.id) ?? 0,
+              ),
+              liquidityUsd: metrics.liquidityUsd ?? null,
+              smartWallets: token.smart_wallet_count,
+              riskScore: assessment?.risk.score ?? null,
+              riskLevel: assessment?.risk.level ?? null,
+              priceChange1h: metrics.priceChange1h ?? null,
+            },
+          });
+          result.trackedAlertsCreated += outcome.events;
+          result.trackedAlertsTelegramSent += outcome.telegramSent;
+          if (outcome.error) errors.push(`tracked ${token.mint_address}: ${outcome.error}`);
+        } catch (trackedError) {
+          errors.push(
+            `tracked ${token.mint_address}: ${trackedError instanceof Error ? trackedError.message : String(trackedError)}`,
+          );
+        }
+      }
+    }
+
+
+
 
     if (scoring.level !== "signal" && scoring.level !== "priority") continue;
 
