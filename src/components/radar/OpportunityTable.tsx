@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowDownWideNarrow, TrendingUp } from "lucide-react";
+import { ArrowDownWideNarrow, Search, TrendingUp, X } from "lucide-react";
 import { formatAge, formatUsd } from "@/lib/radar-service";
 import { tokenLevel, type TokenRow } from "@/lib/radar-types";
 import {
@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
 import { RiskBadge } from "./RiskBadge";
 
