@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
 import { RiskBadge } from "./RiskBadge";
 import { TrackBell } from "./TrackBell";
+import { NowButton } from "./NowButton";
+
 
 type SortMode = "score" | "newest";
 
