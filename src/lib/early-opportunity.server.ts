@@ -252,7 +252,7 @@ export async function recordEarlyOpportunity(
         token_symbol: candidate.symbol,
         score: candidate.score,
         buyers: candidate.buyers,
-        liquidity_usd: candidate.liquidityUsd,
+        liquidity_usd: normalizeLiquidityUsd(candidate.liquidityUsd),
         market_cap: candidate.marketCap,
         age_minutes: Math.round(candidate.ageMinutes),
         volume_1h_usd: candidate.volume1h,
