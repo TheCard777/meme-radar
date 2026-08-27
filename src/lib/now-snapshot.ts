@@ -27,7 +27,12 @@ export type NowSnapshotInput = {
   topFactors: Array<{ label: string; detail?: string }>;
   pairUrl: string | null;
   isSimulated: boolean;
+  /** Horodatage du rafraîchissement à la demande. */
+  refreshedAt?: string;
+  /** Données non rafraîchissables à l'instant : valeur reprise + ancienneté. */
+  staleFields?: Array<{ label: string; ageMinutes: number }>;
 };
+
 
 const UNKNOWN = "inconnu";
 
