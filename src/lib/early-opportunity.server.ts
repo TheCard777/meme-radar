@@ -30,12 +30,26 @@ import { formatUsd } from "./radar-service-format";
 export const EARLY_OPPORTUNITY_DEFAULTS = {
   enabled: true,
   minBuyers: 60,
-  maxBuyers: 100,
+  maxBuyers: 150,
   maxAgeMinutes: 120,
-  minLiquidityUsd: 20_000,
-  minVolume1hUsd: 30_000,
-  accelerationFactor: 2,
+  /** 0 = aucun minimum de liquidité (les Pump.fun pré-migration n'ont pas de pool). */
+  minLiquidityUsd: 0,
+  minVolume1hUsd: 5_000,
+  accelerationFactor: 1.5,
 } as const;
+
+/**
+ * DEX Screener renvoie `0` (ou rien) pour les tokens Pump.fun encore sur bonding
+ * curve : il n'existe pas de pool à mesurer. Ce 0 n'est PAS une liquidité réelle
+ * mesurée, il est donc converti en « non mesurée » (null) et n'apparaît jamais
+ * comme une valeur chiffrée dans les alertes.
+ */
+export function normalizeLiquidityUsd(value: number | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return value;
+}
+
 
 export interface EarlyOpportunityConfig {
   enabled: boolean;
@@ -125,12 +139,14 @@ export function computeEarlyStrength(
   config: EarlyOpportunityConfig,
 ): EarlyStrength {
   const acceleration = computeAcceleration(candidate);
+  const liquidity = normalizeLiquidityUsd(candidate.liquidityUsd);
   const checks: (boolean | null)[] = [
     Number.isFinite(candidate.ageMinutes) ? candidate.ageMinutes <= config.maxAgeMinutes : null,
     Number.isFinite(candidate.buyers)
       ? candidate.buyers >= config.minBuyers && candidate.buyers <= config.maxBuyers
       : null,
-    candidate.liquidityUsd === null ? null : candidate.liquidityUsd >= config.minLiquidityUsd,
+    // Critère liquidité évalué uniquement s'il est configuré ET réellement mesuré.
+    config.minLiquidityUsd > 0 && liquidity !== null ? liquidity >= config.minLiquidityUsd : null,
     candidate.volume1h === null ? null : candidate.volume1h >= config.minVolume1hUsd,
     acceleration === null ? null : acceleration >= config.accelerationFactor,
   ];
@@ -149,6 +165,8 @@ export function computeEarlyStrength(
  * Vérifie les conditions de traction précoce. Aucun effet de bord.
  * Le score Radar n'intervient pas : il est purement informatif.
  * L'accélération n'est bloquante que si elle est mesurable.
+ * La liquidité n'est bloquante que si un minimum est configuré ET que la valeur
+ * est réellement mesurée (les Pump.fun pré-migration n'ont pas de pool).
  */
 export function matchesEarlyOpportunity(
   candidate: EarlyOpportunityCandidate,
@@ -157,7 +175,9 @@ export function matchesEarlyOpportunity(
   if (!config.enabled) return false;
   if (candidate.ageMinutes > config.maxAgeMinutes) return false;
   if (candidate.buyers < config.minBuyers || candidate.buyers > config.maxBuyers) return false;
-  if (candidate.liquidityUsd === null || candidate.liquidityUsd < config.minLiquidityUsd) {
+
+  const liquidity = normalizeLiquidityUsd(candidate.liquidityUsd);
+  if (config.minLiquidityUsd > 0 && liquidity !== null && liquidity < config.minLiquidityUsd) {
     return false;
   }
   if (candidate.volume1h === null || candidate.volume1h < config.minVolume1hUsd) return false;
@@ -166,6 +186,7 @@ export function matchesEarlyOpportunity(
   if (acceleration !== null && acceleration < config.accelerationFactor) return false;
   return true;
 }
+
 
 export function buildEarlyOpportunityMessage(
   candidate: EarlyOpportunityCandidate,
@@ -189,7 +210,11 @@ export function buildEarlyOpportunityMessage(
       : `💪 Early Strength : ${strength.score}/100 (${strength.passed}/${strength.measured} critères Early mesurés satisfaits)`,
     "",
     `👥 Acheteurs : ${candidate.buyers} (fenêtre ${config.minBuyers}–${config.maxBuyers})`,
-    `💧 Liquidité : ${candidate.liquidityUsd !== null ? formatUsd(candidate.liquidityUsd) : "inconnue"} (min ${formatUsd(config.minLiquidityUsd)})`,
+    `💧 Liquidité : ${
+      normalizeLiquidityUsd(candidate.liquidityUsd) !== null
+        ? `${formatUsd(candidate.liquidityUsd as number)}${config.minLiquidityUsd > 0 ? ` (min ${formatUsd(config.minLiquidityUsd)})` : ""}`
+        : "non mesurée (pas de pool DEX — Pump.fun pré-migration)"
+    }`,
     `📈 Volume 1h : ${candidate.volume1h !== null ? formatUsd(candidate.volume1h) : "inconnu"} (min ${formatUsd(config.minVolume1hUsd)})`,
     `⚡ Accélération : ${acceleration !== null ? `${acceleration.toFixed(1)}x` : "inconnue"} (min ${config.accelerationFactor}x)`,
     `⏱️ Âge : ${ageLabel} (max ${Math.round(config.maxAgeMinutes / 60)} h)`,
@@ -227,7 +252,7 @@ export async function recordEarlyOpportunity(
         token_symbol: candidate.symbol,
         score: candidate.score,
         buyers: candidate.buyers,
-        liquidity_usd: candidate.liquidityUsd,
+        liquidity_usd: normalizeLiquidityUsd(candidate.liquidityUsd),
         market_cap: candidate.marketCap,
         age_minutes: Math.round(candidate.ageMinutes),
         volume_1h_usd: candidate.volume1h,

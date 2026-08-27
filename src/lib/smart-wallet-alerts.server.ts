@@ -21,7 +21,7 @@ export const DEFAULT_SMART_WALLET_ALERT_THRESHOLD = 75;
 /** Score minimum requis du smart wallet pour déclencher une alerte. */
 export const MIN_SMART_WALLET_SCORE = 65;
 /** Nombre minimum d'acheteurs réels du token au moment de l'alerte. */
-export const MIN_TOKEN_BUYERS = 60;
+export const MIN_TOKEN_BUYERS = 100;
 /** Rang d'entrée minimum : le #1 (créateur/acheteur initial) est exclu. */
 export const ALERT_RANK_MIN = 2;
 /** Rang d'entrée maximum retenu pour une alerte. */
@@ -30,6 +30,26 @@ export const ALERT_RANK_MAX = 100;
 export const MAX_TOKEN_AGE_MINUTES = 120;
 /** Nombre maximal d'alertes envoyées par cycle (protection anti-flood). */
 const MAX_ALERTS_PER_CYCLE = 15;
+
+/**
+ * Règles Smart Wallet Entry, pures et testables (aucun effet de bord) :
+ * score wallet >= 65, rang #2 à #100 (#1 toujours exclu), token >= 100
+ * acheteurs réels et âge <= 2 h. L'anti-doublon wallet/token reste géré par la
+ * contrainte unique de `smart_wallet_alerts`.
+ */
+export function matchesSmartWalletEntry(input: {
+  walletScore: number;
+  entryRank: number;
+  buyers: number;
+  ageMinutes: number;
+}): boolean {
+  if (!(input.walletScore >= MIN_SMART_WALLET_SCORE)) return false;
+  if (input.entryRank < ALERT_RANK_MIN || input.entryRank > ALERT_RANK_MAX) return false;
+  if (!(input.buyers >= MIN_TOKEN_BUYERS)) return false;
+  if (!Number.isFinite(input.ageMinutes) || input.ageMinutes > MAX_TOKEN_AGE_MINUTES) return false;
+  return true;
+}
+
 
 export interface SmartWalletAlertResult {
   candidates: number;
@@ -241,18 +261,24 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
   const eligible = fresh.filter((entry) => {
     const token = tokenById.get(entry.token_id);
     if (!token) return false;
-    // Règle 3 : l'alerte doit rester « early entry » — token de moins de 2 h.
     const ageMinutes = (nowMs - new Date(token.launched_at).getTime()) / 60_000;
+    const buyers = buyersForToken(entry.token_id);
+    // Règles centralisées (score wallet, rang #2–#100, acheteurs, âge).
+    const ok = matchesSmartWalletEntry({
+      walletScore: scoreByWallet.get(entry.wallet_address) ?? 0,
+      entryRank: entry.entry_rank,
+      buyers,
+      ageMinutes,
+    });
+    if (ok) return true;
     if (!Number.isFinite(ageMinutes) || ageMinutes > MAX_TOKEN_AGE_MINUTES) {
       result.skippedTooOld += 1;
-      return false;
-    }
-    if (buyersForToken(entry.token_id) < MIN_TOKEN_BUYERS) {
+    } else if (buyers < MIN_TOKEN_BUYERS) {
       result.skippedFewBuyers += 1;
-      return false;
     }
-    return true;
+    return false;
   });
+
 
   const pending = eligible.slice(0, MAX_ALERTS_PER_CYCLE);
   if (pending.length === 0) return result;

@@ -16,6 +16,7 @@ import { fetchMarketMetrics, MARKET_BATCH_SIZE, type MarketMetrics } from "./mar
 import { sendAlertTelegram } from "./telegram.server";
 import {
   matchesEarlyOpportunity,
+  normalizeLiquidityUsd,
   readEarlyOpportunityConfig,
   recordEarlyOpportunity,
   type EarlyOpportunityConfig,
@@ -368,8 +369,9 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
     });
 
     // ---- Alerte « Early Opportunity » (indépendante du score et du niveau)
-    // Traction précoce : âge <= 2 h, 60-100 acheteurs, liquidité + volume 1h
-    // minimums, accélération >= 2x lorsqu'elle est réellement mesurable.
+    // Traction précoce : âge <= 2 h, 60-150 acheteurs, volume 1h >= 5 000 $,
+    // accélération >= 1,5x lorsqu'elle est réellement mesurable. Aucun minimum
+    // de liquidité : les Pump.fun pré-migration n'ont pas de pool DEX.
     {
       const buyers = Math.max(
         Math.round(metrics.buyers1h ?? 0),
@@ -383,7 +385,9 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
         score: scoring.score,
         confidence: scoring.confidence,
         buyers,
-        liquidityUsd: metrics.liquidityUsd ?? null,
+        // 0 renvoyé par DEX Screener = pas de pool (Pump.fun pré-migration),
+        // ce n'est pas une liquidité réellement mesurée.
+        liquidityUsd: normalizeLiquidityUsd(metrics.liquidityUsd),
         marketCap: metrics.marketCap ?? null,
         volume24h: metrics.volume24h ?? null,
         volume1h: metrics.volume1h ?? null,
