@@ -36,8 +36,9 @@ export function TokenDetailSheet({
                 {!token.is_simulated ? (
                   <RiskBadge score={token.risk_score} level={token.risk_level} compact />
                 ) : null}
-                
+                <NowButton token={token} />
               </SheetTitle>
+
               <SheetDescription>
                 {token.name} · <span className="font-mono">{shortAddress(token.mint_address)}</span>
               </SheetDescription>
