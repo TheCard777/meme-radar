@@ -130,8 +130,11 @@ export function buildNowSnapshotMessage(input: NowSnapshotInput): string {
     `🔗 DEX : ${input.pairUrl ?? `https://dexscreener.com/solana/${input.mint}`}`,
     `🔗 Explorer : https://solscan.io/token/${input.mint}`,
     "",
-    "Analyse ponctuelle — observation uniquement, aucun trading automatique.",
+    input.refreshedAt
+      ? `Analyse ponctuelle rafraîchie à la demande (${new Date(input.refreshedAt).toISOString().slice(11, 16)} UTC) — observation uniquement, aucun trading automatique.`
+      : "Analyse ponctuelle — observation uniquement, aucun trading automatique.",
   );
+
 
   return lines.join("\n");
 }
