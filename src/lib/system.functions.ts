@@ -1,6 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
 
 /**
  * Fonctions serveur de supervision (health, scanner, Telegram, état du bot).
@@ -32,21 +30,13 @@ export interface SystemHealth {
   checkedAt: string;
 }
 
-function serverSupabase() {
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-  return createClient<Database>(process.env["SUPABASE_URL"]!, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      fetch: (input, init) => {
-        const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) {
-          h.delete("Authorization");
-        }
-        h.set("apikey", key);
-        return fetch(input, { ...init, headers: h });
-      },
-    },
-  });
+/**
+ * Client serveur privilégié : `bot_settings` n'est plus exposée au rôle anon
+ * (durcissement RLS/GRANT), donc la clé publiable retournerait 401.
+ */
+async function serverSupabase() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
 }
 
 export const getSystemHealth = createServerFn({ method: "GET" }).handler(
@@ -59,7 +49,7 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
     let database = { ok: true, message: "Base de données joignable." };
     let botStatus: SystemHealth["botStatus"] = "unknown";
     try {
-      const { data, error } = await serverSupabase()
+      const { data, error } = await (await serverSupabase())
         .from("bot_settings")
         .select("status")
         .limit(1)
@@ -67,11 +57,15 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(
       if (error) throw error;
       botStatus = (data?.status as SystemHealth["botStatus"]) ?? "unknown";
     } catch (error) {
+      const raw = error instanceof Error ? error.message : String(error);
       database = {
         ok: false,
-        message: error instanceof Error ? error.message : "Base injoignable",
+        message: /permission denied|42501/i.test(raw)
+          ? `Accès refusé sur bot_settings (droits base de données) : ${raw}`
+          : `Base injoignable : ${raw}`,
       };
     }
+
 
     return {
       tradingEnabled: false,
@@ -98,7 +92,7 @@ export const setBotState = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const { getScannerStatus } = await import("./scanner.server");
-    const supabase = serverSupabase();
+    const supabase = await serverSupabase();
     const { error } = await supabase
       .from("bot_settings")
       .update({
@@ -145,7 +139,7 @@ export const sendTestTelegramAlert = createServerFn({ method: "POST" }).handler(
     if (result.sent) {
       // Mémorise l'état de connexion dans bot_settings (simple indicateur).
       try {
-        await serverSupabase()
+        await (await serverSupabase())
           .from("bot_settings")
           .update({ telegram_connected: true } as never)
           .not("id", "is", null);
