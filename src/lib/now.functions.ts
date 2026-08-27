@@ -35,10 +35,11 @@ export const sendNowSnapshotServer = createServerFn({ method: "POST" })
     const factors = Array.isArray(row["score_factors"])
       ? (row["score_factors"] as Array<Record<string, unknown>>)
           .filter((f) => typeof f["label"] === "string")
-          .map((f) => ({
-            label: String(f["label"]),
-            detail: typeof f["detail"] === "string" ? f["detail"] : undefined,
-          }))
+          .map((f) =>
+            typeof f["detail"] === "string"
+              ? { label: String(f["label"]), detail: f["detail"] }
+              : { label: String(f["label"]) },
+          )
       : [];
 
     const message = buildNowSnapshotMessage({
