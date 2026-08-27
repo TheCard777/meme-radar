@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getBotSettingsServer, getDemoArchivedCountServer } from "./ops.functions";
+
 import type { SnapshotPoint } from "./performance";
 import type {
   AlertRow,
@@ -17,13 +19,9 @@ import type {
  */
 
 export async function fetchBotSettings(): Promise<BotSettings> {
-  const { data, error } = await supabase
-    .from("bot_settings")
-    .select("*")
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
+  const data = await getBotSettingsServer();
   if (!data) throw new Error("Réglages du bot introuvables");
+
   return {
     id: data.id,
     status: (data.status as BotStatus) ?? "paused",
@@ -126,10 +124,9 @@ export async function fetchAlerts(): Promise<AlertRow[]> {
 
 /** Nombre total de lignes de démonstration archivées (retirées du flux). */
 export async function fetchDemoArchivedCount(): Promise<number> {
-  const { data, error } = await supabase.from("demo_archive").select("rows_removed");
-  if (error) throw error;
-  return (data ?? []).reduce((sum, row) => sum + (row.rows_removed ?? 0), 0);
+  return getDemoArchivedCountServer();
 }
+
 
 /** Entrées précoces réelles observées on-chain, par wallet. */
 export async function fetchWalletEntries(): Promise<
