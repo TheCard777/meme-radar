@@ -23,19 +23,33 @@ export function OpportunityTable({
   onSelect: (token: TokenRow) => void;
 }) {
   const [sortBy, setSortBy] = useState<SortMode>("score");
+  const [search, setSearch] = useState("");
+
+  const normalizedSearch = search.trim().toLowerCase();
+
+  const filteredTokens = useMemo(() => {
+    if (!normalizedSearch) return tokens;
+    return tokens.filter(
+      (token) =>
+        token.symbol.toLowerCase().includes(normalizedSearch) ||
+        token.name.toLowerCase().includes(normalizedSearch) ||
+        token.mint_address.toLowerCase().includes(normalizedSearch),
+    );
+  }, [tokens, normalizedSearch]);
 
   const sortedTokens = useMemo(() => {
-    const arr = [...tokens];
+    const arr = [...filteredTokens];
     if (sortBy === "score") {
       return arr.sort((a, b) => b.score - a.score);
     }
     return arr.sort(
       (a, b) => new Date(b.launched_at).getTime() - new Date(a.launched_at).getTime(),
     );
-  }, [tokens, sortBy]);
+  }, [filteredTokens, sortBy]);
 
-  const realCount = tokens.filter((token) => !token.is_simulated).length;
-  const demoCount = tokens.length - realCount;
+  const realCount = filteredTokens.filter((token) => !token.is_simulated).length;
+  const demoCount = filteredTokens.length - realCount;
+  const totalCount = tokens.length;
 
   return (
     <section aria-label="Opportunités détectées" className="panel overflow-hidden">
