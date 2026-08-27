@@ -4,6 +4,7 @@ import { formatAge, formatUsd, shortAddress } from "@/lib/radar-service";
 import { LP_STATUS_LABELS, tokenLevel, type TokenRow } from "@/lib/radar-types";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
 import { RiskBadge } from "./RiskBadge";
+import { TrackBell } from "./TrackBell";
 
 function metricLabel(value: number | null | undefined, format: (v: number) => string): string {
   return value === null || value === undefined ? "Inconnu" : format(value);
@@ -33,6 +34,7 @@ export function TokenDetailSheet({
                 {!token.is_simulated ? (
                   <RiskBadge score={token.risk_score} level={token.risk_level} compact />
                 ) : null}
+                <TrackBell token={token} className="ml-auto" />
               </SheetTitle>
               <SheetDescription>
                 {token.name} · <span className="font-mono">{shortAddress(token.mint_address)}</span>
