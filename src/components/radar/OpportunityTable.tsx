@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowDownWideNarrow, TrendingUp } from "lucide-react";
+import { ArrowDownWideNarrow, Search, TrendingUp, X } from "lucide-react";
 import { formatAge, formatUsd } from "@/lib/radar-service";
 import { tokenLevel, type TokenRow } from "@/lib/radar-types";
 import {
@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
 import { RiskBadge } from "./RiskBadge";
 
@@ -22,25 +23,60 @@ export function OpportunityTable({
   onSelect: (token: TokenRow) => void;
 }) {
   const [sortBy, setSortBy] = useState<SortMode>("score");
+  const [search, setSearch] = useState("");
+
+  const normalizedSearch = search.trim().toLowerCase();
+
+  const filteredTokens = useMemo(() => {
+    if (!normalizedSearch) return tokens;
+    return tokens.filter(
+      (token) =>
+        token.symbol.toLowerCase().includes(normalizedSearch) ||
+        token.name.toLowerCase().includes(normalizedSearch) ||
+        token.mint_address.toLowerCase().includes(normalizedSearch),
+    );
+  }, [tokens, normalizedSearch]);
 
   const sortedTokens = useMemo(() => {
-    const arr = [...tokens];
+    const arr = [...filteredTokens];
     if (sortBy === "score") {
       return arr.sort((a, b) => b.score - a.score);
     }
     return arr.sort(
       (a, b) => new Date(b.launched_at).getTime() - new Date(a.launched_at).getTime(),
     );
-  }, [tokens, sortBy]);
+  }, [filteredTokens, sortBy]);
 
-  const realCount = tokens.filter((token) => !token.is_simulated).length;
-  const demoCount = tokens.length - realCount;
+  const realCount = filteredTokens.filter((token) => !token.is_simulated).length;
+  const demoCount = filteredTokens.length - realCount;
+  const totalCount = tokens.length;
 
   return (
     <section aria-label="Opportunités détectées" className="panel overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
         <h2 className="text-base font-semibold">Opportunités détectées</h2>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher un token, nom ou mint…"
+              aria-label="Rechercher une opportunité"
+              className="h-8 w-full pl-8 pr-7 text-xs sm:w-64"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Effacer la recherche"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            )}
+          </div>
           <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortMode)}>
             <SelectTrigger
               aria-label="Trier les opportunités"
@@ -68,6 +104,7 @@ export function OpportunityTable({
             {realCount > 0
               ? `${realCount} réel${realCount > 1 ? "s" : ""}${demoCount > 0 ? ` · ${demoCount} démo` : ""}`
               : `${demoCount} donnée${demoCount > 1 ? "s" : ""} démo`}
+            {normalizedSearch && totalCount > 0 ? ` · ${filteredTokens.length}/${totalCount}` : null}
           </span>
         </div>
       </div>
@@ -213,6 +250,19 @@ export function OpportunityTable({
           </li>
         ))}
       </ul>
+
+      {sortedTokens.length === 0 && (
+        <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+          {normalizedSearch ? (
+            <>
+              <p className="font-medium">Aucune opportunité ne correspond à « {search.trim()} »</p>
+              <p className="mt-1 text-xs">Essaye un autre symbole, nom ou adresse mint.</p>
+            </>
+          ) : (
+            <p>Aucune opportunité détectée pour le moment.</p>
+          )}
+        </div>
+      )}
     </section>
   );
 }
