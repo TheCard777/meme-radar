@@ -18,9 +18,8 @@ import type {
 
 export async function fetchBotSettings(): Promise<BotSettings> {
   const data = await getBotSettingsServer();
-
-  if (error) throw error;
   if (!data) throw new Error("Réglages du bot introuvables");
+
   return {
     id: data.id,
     status: (data.status as BotStatus) ?? "paused",
