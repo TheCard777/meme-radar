@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
 import { RiskBadge } from "./RiskBadge";
 import { TrackBell } from "./TrackBell";
+import { NowButton } from "./NowButton";
+
 
 type SortMode = "score" | "newest";
 
@@ -191,9 +193,13 @@ export function OpportunityTable({
                     </span>
                   </div>
                 </td>
-                <td className="px-3 py-3 text-right">
-                  <TrackBell token={token} />
+                <td className="px-3 py-3">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <NowButton token={token} />
+                    <TrackBell token={token} />
+                  </div>
                 </td>
+
               </tr>
             ))}
           </tbody>
@@ -204,13 +210,15 @@ export function OpportunityTable({
       <ul className="divide-y divide-border/60 md:hidden">
         {sortedTokens.map((token) => (
           <li key={token.id} className="relative">
-            <div className="absolute right-3 top-4 z-10">
+            <div className="absolute right-3 top-4 z-10 flex items-center gap-1.5">
+              <NowButton token={token} />
               <TrackBell token={token} />
             </div>
+
             <button
               type="button"
               onClick={() => onSelect(token)}
-              className="w-full px-4 py-4 pr-14 text-left transition-colors hover:bg-secondary/60"
+              className="w-full px-4 py-4 pr-32 text-left transition-colors hover:bg-secondary/60"
             >
               <div className="flex items-center justify-between gap-3">
                 <div>

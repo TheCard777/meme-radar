@@ -4,6 +4,8 @@ import { formatAge, formatUsd, shortAddress } from "@/lib/radar-service";
 import { LP_STATUS_LABELS, tokenLevel, type TokenRow } from "@/lib/radar-types";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
 import { RiskBadge } from "./RiskBadge";
+import { NowButton } from "./NowButton";
+
 
 
 function metricLabel(value: number | null | undefined, format: (v: number) => string): string {
@@ -34,8 +36,9 @@ export function TokenDetailSheet({
                 {!token.is_simulated ? (
                   <RiskBadge score={token.risk_score} level={token.risk_level} compact />
                 ) : null}
-                
+                <NowButton token={token} />
               </SheetTitle>
+
               <SheetDescription>
                 {token.name} · <span className="font-mono">{shortAddress(token.mint_address)}</span>
               </SheetDescription>
