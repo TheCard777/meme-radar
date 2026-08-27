@@ -4,6 +4,8 @@ import { formatAge, formatUsd, shortAddress } from "@/lib/radar-service";
 import { LP_STATUS_LABELS, tokenLevel, type TokenRow } from "@/lib/radar-types";
 import { ScoreBadge, StatusPill } from "./ScoreBadge";
 import { RiskBadge } from "./RiskBadge";
+import { NowButton } from "./NowButton";
+
 
 
 function metricLabel(value: number | null | undefined, format: (v: number) => string): string {
