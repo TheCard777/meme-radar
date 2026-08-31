@@ -162,7 +162,7 @@ function SettingsPage() {
                 Session Paramètres déverrouillée (expire après 8 h).
               </p>
             ) : (
-              <p className="text-xs text-warning-foreground/80 text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Verrou désactivé : ajoutez le secret <code>SETTINGS_PASSWORD</code> dans les
                 paramètres du projet pour protéger cette page par mot de passe.
               </p>
