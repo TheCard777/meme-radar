@@ -22,7 +22,7 @@ export const sendNowSnapshotServer = createServerFn({ method: "POST" })
 
     const { input, warnings } = await refreshTokenNow(data.mint);
     const message = buildNowSnapshotMessage(input);
-    const sent = await sendRawTelegramMessage(message);
+    const sent = await sendRawTelegramMessage(message, "now");
     if (!sent.sent) throw new Error(sent.reason ?? "Envoi Telegram impossible");
     return { ok: true as const, warnings };
   });

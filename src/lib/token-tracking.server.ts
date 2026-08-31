@@ -136,7 +136,7 @@ export async function evaluateTrackedToken(params: {
   let telegramSent = false;
   let telegramError: string | null = null;
   if (params.sendTelegram) {
-    const sent = await sendRawTelegramMessage(message);
+    const sent = await sendRawTelegramMessage(message, "tracking");
     telegramSent = sent.sent;
     telegramError = sent.sent ? null : (sent.reason ?? "Envoi Telegram impossible");
   } else {

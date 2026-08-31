@@ -17,6 +17,7 @@ import { Route as WalletsRouteImport } from './routes/wallets'
 import { Route as ApiPublicCollectorHealthRouteImport } from './routes/api/public/collector-health'
 import { Route as ApiPublicEnrichRouteImport } from './routes/api/public/enrich'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
+import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 import { Route as ApiPublicWorkerActionRouteImport } from './routes/api/public/worker/$action'
 
 const IndexRoute = IndexRouteImport.update({
@@ -60,6 +61,12 @@ const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
   path: '/api/public/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTelegramWebhookRoute =
+  ApiPublicTelegramWebhookRouteImport.update({
+    id: '/api/public/telegram/webhook',
+    path: '/api/public/telegram/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWorkerActionRoute = ApiPublicWorkerActionRouteImport.update({
   id: '/api/public/worker/$action',
   path: '/api/public/worker/$action',
@@ -75,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
   '/api/public/enrich': typeof ApiPublicEnrichRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/api/public/worker/$action': typeof ApiPublicWorkerActionRoute
 }
 export interface FileRoutesByTo {
@@ -86,6 +94,7 @@ export interface FileRoutesByTo {
   '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
   '/api/public/enrich': typeof ApiPublicEnrichRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/api/public/worker/$action': typeof ApiPublicWorkerActionRoute
 }
 export interface FileRoutesById {
@@ -98,6 +107,7 @@ export interface FileRoutesById {
   '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
   '/api/public/enrich': typeof ApiPublicEnrichRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
   '/api/public/worker/$action': typeof ApiPublicWorkerActionRoute
 }
 export interface FileRouteTypes {
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/api/public/collector-health'
     | '/api/public/enrich'
     | '/api/public/health'
+    | '/api/public/telegram/webhook'
     | '/api/public/worker/$action'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -122,6 +133,7 @@ export interface FileRouteTypes {
     | '/api/public/collector-health'
     | '/api/public/enrich'
     | '/api/public/health'
+    | '/api/public/telegram/webhook'
     | '/api/public/worker/$action'
   id:
     | '__root__'
@@ -133,6 +145,7 @@ export interface FileRouteTypes {
     | '/api/public/collector-health'
     | '/api/public/enrich'
     | '/api/public/health'
+    | '/api/public/telegram/webhook'
     | '/api/public/worker/$action'
   fileRoutesById: FileRoutesById
 }
@@ -145,6 +158,7 @@ export interface RootRouteChildren {
   ApiPublicCollectorHealthRoute: typeof ApiPublicCollectorHealthRoute
   ApiPublicEnrichRoute: typeof ApiPublicEnrichRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
+  ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
   ApiPublicWorkerActionRoute: typeof ApiPublicWorkerActionRoute
 }
 
@@ -206,6 +220,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/telegram/webhook': {
+      id: '/api/public/telegram/webhook'
+      path: '/api/public/telegram/webhook'
+      fullPath: '/api/public/telegram/webhook'
+      preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/worker/$action': {
       id: '/api/public/worker/$action'
       path: '/api/public/worker/$action'
@@ -225,6 +246,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCollectorHealthRoute: ApiPublicCollectorHealthRoute,
   ApiPublicEnrichRoute: ApiPublicEnrichRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
+  ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
   ApiPublicWorkerActionRoute: ApiPublicWorkerActionRoute,
 }
 export const routeTree = rootRouteImport

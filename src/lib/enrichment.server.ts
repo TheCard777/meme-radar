@@ -505,7 +505,7 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       level: scoring.level === "priority" ? "critical" : "signal",
       message,
       simulated: false,
-    });
+    }, "general");
     if (sent.sent) result.telegramSent += 1;
     else result.telegramSkipped = sent.reason ?? "Envoi Telegram impossible";
   }
