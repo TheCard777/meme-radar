@@ -124,6 +124,8 @@ export const setBotState = createServerFn({ method: "POST" })
  */
 export const sendTestTelegramAlert = createServerFn({ method: "POST" }).handler(
   async () => {
+    const { requireSettingsUnlocked } = await import("./settings-gate.server");
+    await requireSettingsUnlocked();
     const { sendAlertTelegram, getTelegramStatus } = await import("./telegram.server");
     const status = await getTelegramStatus();
     if (!status.configured || !status.chatConfigured) {
