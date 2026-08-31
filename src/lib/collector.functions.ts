@@ -21,6 +21,8 @@ export const setCollectorState = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data }): Promise<CollectorStatus> => {
+    const { requireSettingsUnlocked } = await import("./settings-gate.server");
+    await requireSettingsUnlocked();
     const { setCollectorDesiredState } = await import("./collector.server");
     return setCollectorDesiredState(data.desired);
   });

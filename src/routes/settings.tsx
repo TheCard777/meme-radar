@@ -6,6 +6,11 @@ import { TelegramPanel } from "@/components/radar/TelegramPanel";
 import { TelegramRecipientsPanel } from "@/components/radar/TelegramRecipientsPanel";
 import { SystemStatus } from "@/components/radar/SystemStatus";
 import { CollectorPanel } from "@/components/radar/CollectorPanel";
+import {
+  SettingsLockButton,
+  SettingsLockScreen,
+  useSettingsGate,
+} from "@/components/radar/SettingsLock";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -35,6 +40,9 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
+  const gate = useSettingsGate();
+  const locked = gate.data ? gate.data.configured && !gate.data.unlocked : false;
+
   const { data: settings, isLoading } = useBotSettings();
   const update = useUpdateSettings();
 
@@ -48,6 +56,7 @@ function SettingsPage() {
     setCritical(settings.critical_threshold);
     setCategories(settings.signal_categories);
   }, [settings]);
+
 
   const save = () => {
     if (!settings || !categories) return;
@@ -69,7 +78,11 @@ function SettingsPage() {
       title="Paramètres"
       subtitle="Seuils de scoring, catégories de signaux et intégration Telegram."
     >
-      {isLoading || !categories ? (
+      {gate.isLoading ? (
+        <Skeleton className="h-96 w-full" />
+      ) : locked ? (
+        <SettingsLockScreen />
+      ) : isLoading || !categories ? (
         <Skeleton className="h-96 w-full" />
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
@@ -142,6 +155,20 @@ function SettingsPage() {
               Les catégories désactivées ne contribuent plus au score ni aux alertes.
             </p>
           </section>
+
+          <div className="lg:col-span-2 flex flex-wrap items-center justify-between gap-3">
+            {gate.data?.configured ? (
+              <p className="text-xs text-muted-foreground">
+                Session Paramètres déverrouillée (expire après 8 h).
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Verrou désactivé : ajoutez le secret <code>SETTINGS_PASSWORD</code> dans les
+                paramètres du projet pour protéger cette page par mot de passe.
+              </p>
+            )}
+            {gate.data?.configured ? <SettingsLockButton /> : null}
+          </div>
 
           <SystemStatus />
         <CollectorPanel />

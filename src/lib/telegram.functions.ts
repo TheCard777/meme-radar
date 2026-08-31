@@ -12,6 +12,8 @@ import {
  */
 
 export const listTelegramRecipients = createServerFn({ method: "GET" }).handler(async () => {
+    const { requireSettingsUnlocked } = await import("./settings-gate.server");
+    await requireSettingsUnlocked();
   const { listRecipients, listPendingInvites } = await import("./telegram-recipients.server");
   const [recipients, invites] = await Promise.all([listRecipients(), listPendingInvites()]);
   return {
@@ -34,6 +36,8 @@ export const createTelegramInvite = createServerFn({ method: "POST" })
     ttlMinutes: typeof input?.ttlMinutes === "number" ? input.ttlMinutes : 60,
   }))
   .handler(async ({ data }) => {
+    const { requireSettingsUnlocked } = await import("./settings-gate.server");
+    await requireSettingsUnlocked();
     const { createInvite } = await import("./telegram-recipients.server");
     const invite = await createInvite({ label: data.label, ttlMinutes: data.ttlMinutes });
     return { code: invite.code, expiresAt: invite.expiresAt, label: invite.label, id: invite.id };
@@ -45,6 +49,8 @@ export const revokeTelegramInvite = createServerFn({ method: "POST" })
     return { id: input.id };
   })
   .handler(async ({ data }) => {
+    const { requireSettingsUnlocked } = await import("./settings-gate.server");
+    await requireSettingsUnlocked();
     const { revokeInvite } = await import("./telegram-recipients.server");
     await revokeInvite(data.id);
     return { ok: true as const };
@@ -56,6 +62,8 @@ export const setTelegramRecipientActive = createServerFn({ method: "POST" })
     return { id: input.id, isActive: Boolean(input.isActive) };
   })
   .handler(async ({ data }) => {
+    const { requireSettingsUnlocked } = await import("./settings-gate.server");
+    await requireSettingsUnlocked();
     const { setRecipientActive } = await import("./telegram-recipients.server");
     await setRecipientActive(data.id, data.isActive);
     return { ok: true as const };
@@ -67,6 +75,8 @@ export const revokeTelegramRecipient = createServerFn({ method: "POST" })
     return { id: input.id };
   })
   .handler(async ({ data }) => {
+    const { requireSettingsUnlocked } = await import("./settings-gate.server");
+    await requireSettingsUnlocked();
     const { revokeRecipient } = await import("./telegram-recipients.server");
     await revokeRecipient(data.id);
     return { ok: true as const };
@@ -83,6 +93,8 @@ export const updateTelegramRecipientPrefs = createServerFn({ method: "POST" })
     return { id: input.id, prefs };
   })
   .handler(async ({ data }) => {
+    const { requireSettingsUnlocked } = await import("./settings-gate.server");
+    await requireSettingsUnlocked();
     const { updateRecipientPrefs } = await import("./telegram-recipients.server");
     await updateRecipientPrefs(data.id, data.prefs);
     return { ok: true as const };
@@ -90,6 +102,8 @@ export const updateTelegramRecipientPrefs = createServerFn({ method: "POST" })
 
 /** Enregistre le webhook `/start` auprès de Telegram (bot existant, aucun second bot). */
 export const registerTelegramWebhook = createServerFn({ method: "POST" }).handler(async () => {
+    const { requireSettingsUnlocked } = await import("./settings-gate.server");
+    await requireSettingsUnlocked();
   const token = process.env["TELEGRAM_BOT_TOKEN"];
   if (!token) return { ok: false as const, reason: "TELEGRAM_BOT_TOKEN non configuré" };
 
