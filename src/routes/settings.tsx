@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/radar/AppShell";
+import { BotControl } from "@/components/radar/BotControl";
 import { TelegramPanel } from "@/components/radar/TelegramPanel";
 import { TelegramRecipientsPanel } from "@/components/radar/TelegramRecipientsPanel";
 import { SystemStatus } from "@/components/radar/SystemStatus";
@@ -86,6 +87,20 @@ function SettingsPage() {
         <Skeleton className="h-96 w-full" />
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
+          <section
+            aria-label="Contrôle du bot"
+            className="panel flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 lg:col-span-2"
+          >
+            <div>
+              <h2 className="text-base font-semibold">Surveillance du bot</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Met en pause ou reprend la surveillance, le scoring et les alertes.
+                Ce contrôle est réservé à cet écran protégé.
+              </p>
+            </div>
+            <BotControl />
+          </section>
+
           <section aria-label="Seuils de scoring" className="panel space-y-6 p-4 sm:p-5">
             <h2 className="text-base font-semibold">Seuils de scoring</h2>
 
