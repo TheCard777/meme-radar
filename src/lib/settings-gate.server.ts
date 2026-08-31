@@ -3,7 +3,7 @@
  * Le mot de passe attendu (SETTINGS_PASSWORD) reste côté serveur : il n'est
  * jamais renvoyé dans une réponse API ni exposé au bundle client.
  */
-import { useSession } from "@tanstack/react-start/server";
+import { getRequestHeader, useSession } from "@tanstack/react-start/server";
 import { createHash, timingSafeEqual } from "node:crypto";
 import {
   SETTINGS_SESSION_MAX_AGE,
@@ -72,8 +72,8 @@ function readUnlockHeader(): string | null {
  * À appeler au début des server functions réservées aux Paramètres.
  * N'affecte ni le worker Railway (API `/api/public/worker/*`) ni le collector.
  */
-export async function requireSettingsUnlocked(): Promise<void> {
-  if (!(await isSettingsUnlocked())) {
+export async function requireSettingsUnlocked(token?: string | null): Promise<void> {
+  if (!(await isSettingsUnlocked(token))) {
     throw new Error("Paramètres verrouillés : authentification requise.");
   }
 }
