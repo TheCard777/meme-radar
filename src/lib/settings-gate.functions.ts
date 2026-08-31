@@ -16,7 +16,9 @@ export type SettingsGateStatus = {
 
 export const getSettingsGateStatus = createServerFn({ method: "GET" }).handler(
   async (): Promise<SettingsGateStatus> => {
-    const { getGateSession, isGateConfigured } = await import("./settings-gate.server");
+    const { getGateSession, isGateConfigured, isSettingsUnlocked } = await import(
+      "./settings-gate.server"
+    );
     if (!isGateConfigured()) {
       return { configured: false, unlocked: true, blocked: false, retryAfterSeconds: 0 };
     }
@@ -24,7 +26,7 @@ export const getSettingsGateStatus = createServerFn({ method: "GET" }).handler(
     const throttle = evaluateThrottle(session.data);
     return {
       configured: true,
-      unlocked: isSessionUnlocked(session.data),
+      unlocked: (await isSettingsUnlocked()) || isSessionUnlocked(session.data),
       blocked: throttle.blocked,
       retryAfterSeconds: throttle.retryAfterSeconds,
     };
@@ -35,8 +37,8 @@ export const unlockSettings = createServerFn({ method: "POST" })
   .inputValidator((data: { password: string }) => ({
     password: typeof data?.password === "string" ? data.password : "",
   }))
-  .handler(async ({ data }): Promise<{ ok: boolean; message?: string }> => {
-    const { getGateSession, isGateConfigured, passwordMatches } = await import(
+  .handler(async ({ data }): Promise<{ ok: boolean; message?: string; token?: string }> => {
+    const { getGateSession, isGateConfigured, issueUnlockToken, passwordMatches } = await import(
       "./settings-gate.server"
     );
     if (!isGateConfigured()) {
@@ -61,7 +63,9 @@ export const unlockSettings = createServerFn({ method: "POST" })
     }
 
     await session.update(registerSuccess());
-    return { ok: true };
+    // Jeton de repli : utilisé uniquement si le cookie de session est bloqué
+    // (aperçu affiché en iframe). Il ne contient jamais le mot de passe.
+    return { ok: true, token: issueUnlockToken() };
   });
 
 export const lockSettings = createServerFn({ method: "POST" }).handler(async () => {

@@ -10,6 +10,7 @@ import {
   lockSettings,
   unlockSettings,
 } from "@/lib/settings-gate.functions";
+import { clearUnlockToken, storeUnlockToken } from "@/lib/settings-gate.storage";
 
 const GATE_KEY = ["settings_gate"] as const;
 
@@ -27,7 +28,10 @@ export function useLockSettings() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => lock(),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: GATE_KEY }),
+    onSuccess: () => {
+      clearUnlockToken();
+      return queryClient.invalidateQueries({ queryKey: GATE_KEY });
+    },
   });
 }
 
@@ -42,6 +46,7 @@ export function SettingsLockScreen() {
     mutationFn: (value: string) => unlock({ data: { password: value } }),
     onSuccess: async (result) => {
       if (result.ok) {
+        if (result.token) storeUnlockToken(result.token);
         setPassword("");
         setError(null);
         await queryClient.invalidateQueries({ queryKey: GATE_KEY });
