@@ -49,10 +49,23 @@ export function passwordMatches(input: string, expected: string): boolean {
 }
 
 /** Vérifie l'état déverrouillé, sans jamais divulguer le secret attendu. */
-export async function isSettingsUnlocked(): Promise<boolean> {
+export async function isSettingsUnlocked(token?: string | null): Promise<boolean> {
   if (!isGateConfigured()) return true; // verrou non configuré : comportement inchangé
+  const headerToken = token ?? readUnlockHeader();
+  if (verifyUnlockToken(headerToken)) return true;
   const session = await getGateSession();
   return isSessionUnlocked(session.data);
+}
+
+/** En-tête de repli envoyé par le client quand le cookie est bloqué (iframe). */
+export const SETTINGS_UNLOCK_HEADER = "x-settings-unlock";
+
+function readUnlockHeader(): string | null {
+  try {
+    return getRequestHeader(SETTINGS_UNLOCK_HEADER) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**
