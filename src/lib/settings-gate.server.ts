@@ -24,7 +24,9 @@ function sessionConfig() {
     cookie: {
       httpOnly: true,
       secure: true,
-      sameSite: "lax" as const,
+      // "none" est requis pour que le cookie soit accepté quand l'app est
+      // affichée dans une iframe (aperçu Lovable). Nécessite secure: true.
+      sameSite: "none" as const,
       path: "/",
     },
   };
