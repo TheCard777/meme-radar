@@ -64,3 +64,39 @@ export async function requireSettingsUnlocked(): Promise<void> {
     throw new Error("Paramètres verrouillés : authentification requise.");
   }
 }
+
+/**
+ * Repli sans cookie (aperçu en iframe, cookies tiers bloqués) :
+ * jeton signé HMAC-SHA256 avec SETTINGS_SESSION_SECRET, valable
+ * SETTINGS_SESSION_MAX_AGE. Le mot de passe n'est jamais inclus.
+ */
+import { createHmac } from "node:crypto";
+
+function signPayload(payload: string): string {
+  const secret = process.env["SETTINGS_SESSION_SECRET"];
+  if (!secret) throw new Error("SETTINGS_SESSION_SECRET manquant.");
+  return createHmac("sha256", secret).update(payload).digest("hex");
+}
+
+export function issueUnlockToken(now: number = Date.now()): string {
+  const exp = now + SETTINGS_SESSION_MAX_AGE * 1000;
+  const payload = String(exp);
+  return `${payload}.${signPayload(payload)}`;
+}
+
+export function verifyUnlockToken(token: string | undefined | null, now: number = Date.now()): boolean {
+  if (!token) return false;
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) return false;
+  let expected: string;
+  try {
+    expected = signPayload(payload);
+  } catch {
+    return false;
+  }
+  const a = Buffer.from(signature, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return false;
+  const exp = Number(payload);
+  return Number.isFinite(exp) && exp > now;
+}
