@@ -6,6 +6,11 @@ import { TelegramPanel } from "@/components/radar/TelegramPanel";
 import { TelegramRecipientsPanel } from "@/components/radar/TelegramRecipientsPanel";
 import { SystemStatus } from "@/components/radar/SystemStatus";
 import { CollectorPanel } from "@/components/radar/CollectorPanel";
+import {
+  SettingsLockButton,
+  SettingsLockScreen,
+  useSettingsGate,
+} from "@/components/radar/SettingsLock";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -73,7 +78,11 @@ function SettingsPage() {
       title="Paramètres"
       subtitle="Seuils de scoring, catégories de signaux et intégration Telegram."
     >
-      {isLoading || !categories ? (
+      {gate.isLoading ? (
+        <Skeleton className="h-96 w-full" />
+      ) : locked ? (
+        <SettingsLockScreen />
+      ) : isLoading || !categories ? (
         <Skeleton className="h-96 w-full" />
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
@@ -146,6 +155,10 @@ function SettingsPage() {
               Les catégories désactivées ne contribuent plus au score ni aux alertes.
             </p>
           </section>
+
+          <div className="lg:col-span-2 flex justify-end">
+            {gate.data?.configured ? <SettingsLockButton /> : null}
+          </div>
 
           <SystemStatus />
         <CollectorPanel />
