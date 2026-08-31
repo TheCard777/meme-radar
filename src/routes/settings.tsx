@@ -35,6 +35,9 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
+  const gate = useSettingsGate();
+  const locked = gate.data ? gate.data.configured && !gate.data.unlocked : false;
+
   const { data: settings, isLoading } = useBotSettings();
   const update = useUpdateSettings();
 
@@ -48,6 +51,7 @@ function SettingsPage() {
     setCritical(settings.critical_threshold);
     setCategories(settings.signal_categories);
   }, [settings]);
+
 
   const save = () => {
     if (!settings || !categories) return;
