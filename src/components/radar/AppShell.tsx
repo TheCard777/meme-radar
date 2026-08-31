@@ -60,8 +60,6 @@ export function AppShell({
               ))}
             </ul>
           </nav>
-
-          <BotControl />
         </div>
       </header>
 
