@@ -330,7 +330,7 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
 
     // Telegram indisponible ne doit jamais bloquer le worker.
     try {
-      const sent = await sendRawTelegramMessage(message);
+      const sent = await sendRawTelegramMessage(message, "smart_wallet");
       if (sent.sent) {
         result.telegramSent += 1;
         await supabaseAdmin

@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -404,6 +404,89 @@ export type Database = {
           trade_count?: number
           updated_at?: string
           win_rate?: number
+        }
+        Relationships: []
+      }
+      telegram_invites: {
+        Row: {
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          label: string
+          prefs: Json
+          recipient_id: string | null
+          revoked_at: string | null
+          updated_at: string
+          used_at: string | null
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          label?: string
+          prefs?: Json
+          recipient_id?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          used_at?: string | null
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          label?: string
+          prefs?: Json
+          recipient_id?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_invites_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_recipients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_recipients: {
+        Row: {
+          activated_at: string | null
+          chat_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          prefs: Json
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          chat_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          prefs?: Json
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          chat_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          prefs?: Json
+          role?: string
+          updated_at?: string
         }
         Relationships: []
       }

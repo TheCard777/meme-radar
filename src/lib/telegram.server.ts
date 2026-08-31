@@ -5,6 +5,8 @@
  * frontend : seul un statut booléen « connecté / non connecté » est renvoyé.
  */
 
+import type { AlertCategory } from "./telegram-recipients";
+
 export interface TelegramStatus {
   configured: boolean;
   chatConfigured: boolean;
@@ -68,25 +70,23 @@ export async function getTelegramStatus(): Promise<TelegramStatus> {
   }
 }
 
-/**
- * Envoi brut d'un message déjà formaté (utilisé par les alertes Smart Wallet).
- * Ne lève jamais : renvoie toujours un résultat explicite.
- */
-export async function sendRawTelegramMessage(
+/** Envoi bas niveau vers un chat précis. Ne lève jamais. */
+export async function sendTelegramToChat(
+  chatId: string,
   text: string,
+  options: { parseMode?: "HTML" } = {},
 ): Promise<{ sent: boolean; reason?: string }> {
   const config = readTelegramConfig();
-  if (!config || !config.chatId) {
-    return { sent: false, reason: "Secrets Telegram non configurés" };
-  }
+  if (!config) return { sent: false, reason: "Secrets Telegram non configurés" };
   try {
     const response = await fetch(`https://api.telegram.org/bot${config.token}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        chat_id: config.chatId,
+        chat_id: chatId,
         text,
         disable_web_page_preview: true,
+        ...(options.parseMode ? { parse_mode: options.parseMode } : {}),
       }),
     });
     const payload = (await response.json()) as { ok: boolean; description?: string };
@@ -95,6 +95,53 @@ export async function sendRawTelegramMessage(
   } catch (error) {
     return { sent: false, reason: error instanceof Error ? error.message : "Erreur réseau" };
   }
+}
+
+/**
+ * Diffusion d'un message unique aux destinataires concernés par la catégorie.
+ * Le message est construit une seule fois par la logique métier appelante :
+ * cette fonction ne fait que le distribuer.
+ *
+ * `sent` reflète la livraison au destinataire principal, afin de conserver
+ * exactement la sémantique historique des alertes.
+ */
+async function broadcast(
+  text: string,
+  category: AlertCategory,
+  options: { parseMode?: "HTML" } = {},
+): Promise<{ sent: boolean; reason?: string; deliveredTo: number }> {
+  const config = readTelegramConfig();
+  if (!config || !config.chatId) {
+    return { sent: false, reason: "Secrets Telegram non configurés", deliveredTo: 0 };
+  }
+
+  const { resolveTargets } = await import("./telegram-recipients.server");
+  const targets = await resolveTargets(category);
+
+  let ownerResult: { sent: boolean; reason?: string } = {
+    sent: false,
+    reason: "Destinataire principal introuvable",
+  };
+  let deliveredTo = 0;
+
+  for (const target of targets) {
+    const result = await sendTelegramToChat(target.chatId, text, options);
+    if (result.sent) deliveredTo += 1;
+    if (target.role === "owner") ownerResult = result;
+  }
+
+  return { ...ownerResult, deliveredTo };
+}
+
+/**
+ * Envoi brut d'un message déjà formaté (alertes Smart Wallet, Early, suivi, NOW).
+ * Ne lève jamais : renvoie toujours un résultat explicite.
+ */
+export async function sendRawTelegramMessage(
+  text: string,
+  category: AlertCategory = "general",
+): Promise<{ sent: boolean; reason?: string; deliveredTo?: number }> {
+  return broadcast(text, category);
 }
 
 export interface AlertPayload {
@@ -111,26 +158,11 @@ export interface AlertPayload {
  */
 export async function sendAlertTelegram(
   alert: AlertPayload,
-): Promise<{ sent: boolean; reason?: string }> {
-  const config = readTelegramConfig();
-  if (!config || !config.chatId) {
-    return { sent: false, reason: "Secrets Telegram non configurés" };
-  }
-
+  category: AlertCategory = "general",
+): Promise<{ sent: boolean; reason?: string; deliveredTo?: number }> {
   const prefix = alert.level === "critical" ? "🚨 PRIORITÉ" : "📡 SIGNAL";
   const tag = alert.simulated ? "\n<i>Donnée de simulation — aucun trading</i>" : "";
   const text = `${prefix} ${alert.symbol} — score ${alert.score}/100\n${alert.message}${tag}`;
-
-  try {
-    const response = await fetch(`https://api.telegram.org/bot${config.token}/sendMessage`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ chat_id: config.chatId, text, parse_mode: "HTML" }),
-    });
-    const payload = (await response.json()) as { ok: boolean; description?: string };
-    if (!payload.ok) return { sent: false, reason: payload.description ?? "Envoi refusé" };
-    return { sent: true };
-  } catch (error) {
-    return { sent: false, reason: error instanceof Error ? error.message : "Erreur réseau" };
-  }
+  return broadcast(text, category, { parseMode: "HTML" });
 }
+

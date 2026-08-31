@@ -273,7 +273,7 @@ export async function recordEarlyOpportunity(
   }
 
   try {
-    const sent = await sendRawTelegramMessage(buildEarlyOpportunityMessage(candidate, config));
+    const sent = await sendRawTelegramMessage(buildEarlyOpportunityMessage(candidate, config), "early_opportunity");
     await supabaseAdmin
       .from("early_opportunity_alerts")
       .update({
