@@ -10,7 +10,7 @@ import {
   lockSettings,
   unlockSettings,
 } from "@/lib/settings-gate.functions";
-import { clearUnlockToken, storeUnlockToken } from "@/lib/settings-gate.client";
+import { clearUnlockToken, storeUnlockToken } from "@/lib/settings-gate.storage";
 
 const GATE_KEY = ["settings_gate"] as const;
 

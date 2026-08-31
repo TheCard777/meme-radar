@@ -1,5 +1,5 @@
 import { createMiddleware } from "@tanstack/react-start";
-import { SETTINGS_UNLOCK_HEADER, readUnlockToken } from "./settings-gate.client";
+import { SETTINGS_UNLOCK_HEADER, readUnlockToken } from "./settings-gate.storage";
 
 /**
  * Attache le jeton de déverrouillage des Paramètres aux appels server fn.
