@@ -76,12 +76,17 @@ export type Database = {
           early_opportunity_enabled: boolean
           early_opportunity_max_age_minutes: number
           early_opportunity_max_buyers: number
+          early_opportunity_max_volume_liquidity_ratio: number
           early_opportunity_min_buyers: number
           early_opportunity_min_liquidity_usd: number
           early_opportunity_min_score: number
           early_opportunity_min_volume_1h_usd: number
+          early_opportunity_solid_min_strength: number
           id: string
           last_scan_at: string | null
+          risk_alert_cooldown_minutes: number
+          risk_alert_min_confidence: number
+          risk_alerts_enabled: boolean
           signal_categories: Json
           singleton: boolean
           smart_wallet_alert_threshold: number
@@ -103,12 +108,17 @@ export type Database = {
           early_opportunity_enabled?: boolean
           early_opportunity_max_age_minutes?: number
           early_opportunity_max_buyers?: number
+          early_opportunity_max_volume_liquidity_ratio?: number
           early_opportunity_min_buyers?: number
           early_opportunity_min_liquidity_usd?: number
           early_opportunity_min_score?: number
           early_opportunity_min_volume_1h_usd?: number
+          early_opportunity_solid_min_strength?: number
           id?: string
           last_scan_at?: string | null
+          risk_alert_cooldown_minutes?: number
+          risk_alert_min_confidence?: number
+          risk_alerts_enabled?: boolean
           signal_categories?: Json
           singleton?: boolean
           smart_wallet_alert_threshold?: number
@@ -130,12 +140,17 @@ export type Database = {
           early_opportunity_enabled?: boolean
           early_opportunity_max_age_minutes?: number
           early_opportunity_max_buyers?: number
+          early_opportunity_max_volume_liquidity_ratio?: number
           early_opportunity_min_buyers?: number
           early_opportunity_min_liquidity_usd?: number
           early_opportunity_min_score?: number
           early_opportunity_min_volume_1h_usd?: number
+          early_opportunity_solid_min_strength?: number
           id?: string
           last_scan_at?: string | null
+          risk_alert_cooldown_minutes?: number
+          risk_alert_min_confidence?: number
+          risk_alerts_enabled?: boolean
           signal_categories?: Json
           singleton?: boolean
           smart_wallet_alert_threshold?: number
@@ -287,6 +302,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      risk_alerts: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          factors: Json | null
+          id: string
+          level: string
+          liquidity_drop_ratio: number | null
+          risk_score: number | null
+          sent_at: string | null
+          telegram_error: string | null
+          telegram_sent: boolean
+          token_id: string | null
+          token_mint: string
+          token_symbol: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          factors?: Json | null
+          id?: string
+          level: string
+          liquidity_drop_ratio?: number | null
+          risk_score?: number | null
+          sent_at?: string | null
+          telegram_error?: string | null
+          telegram_sent?: boolean
+          token_id?: string | null
+          token_mint: string
+          token_symbol?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          factors?: Json | null
+          id?: string
+          level?: string
+          liquidity_drop_ratio?: number | null
+          risk_score?: number | null
+          sent_at?: string | null
+          telegram_error?: string | null
+          telegram_sent?: boolean
+          token_id?: string | null
+          token_mint?: string
+          token_symbol?: string | null
+        }
+        Relationships: []
       }
       smart_wallet_alerts: {
         Row: {
