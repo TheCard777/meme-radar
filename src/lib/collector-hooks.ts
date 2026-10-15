@@ -9,6 +9,7 @@ export function useCollectorStatus() {
     queryKey: ["collector_status"],
     queryFn: () => fetchStatus(),
     refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
   });
 }
 

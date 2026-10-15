@@ -8,7 +8,8 @@ export function useSystemHealth() {
   return useQuery({
     queryKey: ["system_health"],
     queryFn: () => fetchHealth(),
-    refetchInterval: 60_000,
+    refetchInterval: 45_000,
+    refetchIntervalInBackground: false,
   });
 }
 

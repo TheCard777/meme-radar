@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
@@ -24,13 +24,22 @@ import type { BotStatus, SignalCategories } from "./radar-types";
 export const useBotSettings = () =>
   useQuery({ queryKey: ["bot_settings"], queryFn: fetchBotSettings });
 
-export const useTokens = () => useQuery({ queryKey: ["tokens"], queryFn: fetchTokens });
+/** Rafraîchissement automatique : uniquement onglet visible, données précédentes conservées. */
+const live = (ms: number) => ({
+  refetchInterval: ms,
+  refetchIntervalInBackground: false,
+  staleTime: ms - 2_000,
+  placeholderData: keepPreviousData,
+});
+
+export const useTokens = () =>
+  useQuery({ queryKey: ["tokens"], queryFn: fetchTokens, ...live(15_000) });
 
 export const useTotalRealTokenCount = () =>
-  useQuery({ queryKey: ["tokens", "total_real_count"], queryFn: fetchTotalRealTokenCount });
+  useQuery({ queryKey: ["tokens", "total_real_count"], queryFn: fetchTotalRealTokenCount, ...live(30_000) });
 
 export const useSmartWallets = () =>
-  useQuery({ queryKey: ["smart_wallets"], queryFn: fetchSmartWallets });
+  useQuery({ queryKey: ["smart_wallets"], queryFn: fetchSmartWallets, ...live(30_000) });
 
 export const useWalletTrades = () =>
   useQuery({ queryKey: ["wallet_trades"], queryFn: fetchWalletTrades });
@@ -44,7 +53,7 @@ export const useWalletEntries = () =>
 export const useSnapshots = () =>
   useQuery({ queryKey: ["snapshots"], queryFn: fetchSnapshots });
 
-export const useAlerts = () => useQuery({ queryKey: ["alerts"], queryFn: fetchAlerts });
+export const useAlerts = () => useQuery({ queryKey: ["alerts"], queryFn: fetchAlerts, ...live(15_000) });
 
 export const useSmartWalletAlerts = () =>
   useQuery({ queryKey: ["smart_wallet_alerts"], queryFn: fetchSmartWalletAlerts });
