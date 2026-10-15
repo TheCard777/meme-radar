@@ -60,11 +60,25 @@ export async function fetchMarketMetrics(
   const result = new Map<string, MarketMetrics>();
   if (mints.length === 0) return result;
 
-  const response = await fetch(`${ENDPOINT}${mints.slice(0, MARKET_BATCH_SIZE).join(",")}`, {
-    headers: { accept: "application/json" },
-  });
-  if (!response.ok) {
-    throw new Error(`DEX Screener ${response.status}: ${await response.text()}`);
+  const { isRetryableStatus, retryDelayMs } = await import("./enrich-queue");
+  const url = `${ENDPOINT}${mints.slice(0, MARKET_BATCH_SIZE).join(",")}`;
+  const MAX_ATTEMPTS = 3;
+  let response: Response | null = null;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    try {
+      response = await fetch(url, { headers: { accept: "application/json" } });
+    } catch (networkError) {
+      if (attempt === MAX_ATTEMPTS - 1) throw networkError;
+      await new Promise((r) => setTimeout(r, retryDelayMs(null, attempt)));
+      continue;
+    }
+    if (response.ok || !isRetryableStatus(response.status) || attempt === MAX_ATTEMPTS - 1) break;
+    await new Promise((r) => setTimeout(r, retryDelayMs(response!.headers.get("retry-after"), attempt)));
+  }
+  if (!response || !response.ok) {
+    throw new Error(
+      `DEX Screener ${response?.status ?? "réseau"}: ${response ? (await response.text()).slice(0, 200) : ""}`,
+    );
   }
   const payload = (await response.json()) as { pairs?: DexPair[] | null };
 

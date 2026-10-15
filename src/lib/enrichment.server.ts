@@ -24,6 +24,7 @@ import {
 import { assessTokenRisk, type TokenRiskAssessment } from "./risk.server";
 import { summarizeRisk } from "./risk-scoring";
 import { evaluateTrackedToken, loadEnabledTrackedTokens } from "./token-tracking.server";
+import { nextEnrichAfterMiss, RECENT_WINDOW_MS, splitBatch } from "./enrich-queue";
 
 /** Délai minimal entre deux alertes pour un même token. */
 export const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
@@ -61,6 +62,7 @@ interface TokenRecord {
   creator_address: string | null;
   creator_previous_tokens: number | null;
   coordination_flags: unknown;
+  market_miss_count: number;
 }
 
 interface Settings {
@@ -182,21 +184,52 @@ export function buildAlertMessage(params: {
 /**
  * Enrichit au maximum `limit` tokens réels (les moins récemment enrichis d'abord).
  */
+const TOKEN_COLUMNS =
+  "id, symbol, name, mint_address, launched_at, smart_wallet_count, alert_level, last_alert_at, creator_address, creator_previous_tokens, coordination_flags, market_miss_count";
+
+/**
+ * File d'attente : d'abord les tokens récents (< 2 h) dus, jamais enrichis en
+ * premier puis les plus récents ; ensuite les anciens dus pour compléter.
+ * Les tokens sans marché en backoff (`next_enrich_at` futur) sont ignorés.
+ */
+async function selectTokensToEnrich(limit: number, now: Date): Promise<TokenRecord[]> {
+  const batch = Math.min(limit, MARKET_BATCH_SIZE);
+  const { recent: recentQuota } = splitBatch(batch);
+  const nowIso = now.toISOString();
+  const recentCutoff = new Date(now.getTime() - RECENT_WINDOW_MS).toISOString();
+  const due = `next_enrich_at.is.null,next_enrich_at.lte.${nowIso}`;
+
+  const recentRes = await supabaseAdmin
+    .from("tokens")
+    .select(TOKEN_COLUMNS)
+    .eq("is_simulated", false)
+    .gte("launched_at", recentCutoff)
+    .or(due)
+    .order("last_enriched_at", { ascending: true, nullsFirst: true })
+    .order("launched_at", { ascending: false })
+    .limit(recentQuota);
+  if (recentRes.error) throw new Error(recentRes.error.message);
+  const recent = (recentRes.data ?? []) as unknown as TokenRecord[];
+
+  const remaining = batch - recent.length;
+  if (remaining <= 0) return recent;
+  const oldRes = await supabaseAdmin
+    .from("tokens")
+    .select(TOKEN_COLUMNS)
+    .eq("is_simulated", false)
+    .lt("launched_at", recentCutoff)
+    .or(due)
+    .order("last_enriched_at", { ascending: true, nullsFirst: true })
+    .limit(remaining);
+  if (oldRes.error) throw new Error(oldRes.error.message);
+  return [...recent, ...((oldRes.data ?? []) as unknown as TokenRecord[])];
+}
+
 export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<EnrichmentResult> {
   const settings = await readSettings();
   const errors: string[] = [];
 
-  const { data, error } = await supabaseAdmin
-    .from("tokens")
-    .select(
-      "id, symbol, name, mint_address, launched_at, smart_wallet_count, alert_level, last_alert_at, creator_address, creator_previous_tokens, coordination_flags",
-    )
-    .eq("is_simulated", false)
-    .order("last_enriched_at", { ascending: true, nullsFirst: true })
-    .limit(Math.min(limit, MARKET_BATCH_SIZE));
-
-  if (error) throw new Error(error.message);
-  const tokens = (data ?? []) as unknown as TokenRecord[];
+  const tokens = await selectTokensToEnrich(limit, new Date());
 
   const result: EnrichmentResult = {
     scanned: tokens.length,
@@ -314,6 +347,10 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
         holders_top10_share: holdersTop10Share,
         status: tokenStatusForLevel(scoring.level),
         last_enriched_at: now.toISOString(),
+        // Aucun marché trouvé (réponse valide) : pas une erreur, délai progressif.
+        ...(metrics
+          ? { market_miss_count: 0, next_enrich_at: null }
+          : nextEnrichAfterMiss(token.market_miss_count ?? 0, token.launched_at, now)),
         // Risque : champs séparés du score d'opportunité. `null` = non mesuré.
         ...(assessment
           ? {
