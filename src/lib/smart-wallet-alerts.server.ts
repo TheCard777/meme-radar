@@ -12,6 +12,7 @@
  * MODE OBSERVATION UNIQUEMENT : aucun ordre, aucune clé privée.
  */
 
+import { contractLines, contractLinkLines } from "./telegram-token-block";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendRawTelegramMessage } from "./telegram.server";
 import { formatAge, formatUsd, shortAddress } from "./radar-service-format";
@@ -107,12 +108,13 @@ export function buildSmartWalletAlertMessage(params: {
     `🥇 Rang acheteur : #${params.entryRank} (le #1 est exclu)`,
     `🪙 Token : $${params.symbol}`,
     `📛 Nom : ${params.name}`,
+    ...contractLines(params.mint),
     `💰 Entrée : ${fmtAmount(params.amountRaw)}`,
     `📊 Market Cap : ${params.marketCap ? formatUsd(params.marketCap) : "inconnu"}`,
     `📈 Volume 24h : ${params.volume24h ? formatUsd(params.volume24h) : "inconnu"}`,
     `👥 Acheteurs : ${params.buyers ?? "inconnu"}`,
     `⏱️ Âge du token : ${params.launchedAt ? formatAge(params.launchedAt) : "inconnu"}`,
-    `🔗 Token : https://dexscreener.com/solana/${params.mint}`,
+    ...contractLinkLines(params.mint),
     `🔗 Transaction : ${
       params.signature ? `https://solscan.io/tx/${params.signature}` : "inconnue"
     }`,
@@ -330,7 +332,7 @@ export async function detectSmartWalletEntries(): Promise<SmartWalletAlertResult
 
     // Telegram indisponible ne doit jamais bloquer le worker.
     try {
-      const sent = await sendRawTelegramMessage(message, "smart_wallet");
+      const sent = await sendRawTelegramMessage(message, "smart_wallet", { copyMint: entry.mint_address });
       if (sent.sent) {
         result.telegramSent += 1;
         await supabaseAdmin
