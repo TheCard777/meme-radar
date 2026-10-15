@@ -37,6 +37,10 @@ export const EARLY_OPPORTUNITY_DEFAULTS = {
   minLiquidityUsd: 0,
   minVolume1hUsd: 5_000,
   accelerationFactor: 1.5,
+  /** Volume 1h / liquidité au-delà duquel le volume est jugé anormal (pool trop peu profond). */
+  maxVolumeLiquidityRatio: 15,
+  /** Early Strength minimale pour le palier « traction solide ». */
+  solidMinStrength: 80,
 } as const;
 
 /**
@@ -60,6 +64,8 @@ export interface EarlyOpportunityConfig {
   minLiquidityUsd: number;
   minVolume1hUsd: number;
   accelerationFactor: number;
+  maxVolumeLiquidityRatio: number;
+  solidMinStrength: number;
 }
 
 export interface EarlyOpportunityCandidate {
@@ -79,6 +85,13 @@ export interface EarlyOpportunityCandidate {
   volume5m: number | null;
   ageMinutes: number;
   pairUrl: string | null;
+  /** Acheteurs DISTINCTS mesurés on-chain (null = non mesuré). */
+  distinctBuyers?: number | null;
+  /** Transactions d'achat 1h (DEX Screener) — ce ne sont PAS des acheteurs uniques. */
+  buyTxns1h?: number | null;
+  riskScore?: number | null;
+  riskLevel?: string | null;
+  riskConfidence?: number | null;
 }
 
 export interface EarlyOpportunityOutcome {
@@ -95,6 +108,8 @@ export function readEarlyOpportunityConfig(row: {
   early_opportunity_min_liquidity_usd?: number | null;
   early_opportunity_min_volume_1h_usd?: number | null;
   early_opportunity_acceleration_factor?: number | null;
+  early_opportunity_max_volume_liquidity_ratio?: number | null;
+  early_opportunity_solid_min_strength?: number | null;
 } | null): EarlyOpportunityConfig {
   return {
     enabled: row?.early_opportunity_enabled ?? EARLY_OPPORTUNITY_DEFAULTS.enabled,
@@ -109,6 +124,12 @@ export function readEarlyOpportunityConfig(row: {
     accelerationFactor:
       row?.early_opportunity_acceleration_factor ??
       EARLY_OPPORTUNITY_DEFAULTS.accelerationFactor,
+    maxVolumeLiquidityRatio: Number(
+      row?.early_opportunity_max_volume_liquidity_ratio ??
+        EARLY_OPPORTUNITY_DEFAULTS.maxVolumeLiquidityRatio,
+    ),
+    solidMinStrength:
+      row?.early_opportunity_solid_min_strength ?? EARLY_OPPORTUNITY_DEFAULTS.solidMinStrength,
   };
 }
 
@@ -185,7 +206,37 @@ export function matchesEarlyOpportunity(
 
   const acceleration = computeAcceleration(candidate);
   if (acceleration !== null && acceleration < config.accelerationFactor) return false;
+  // Volume anormal pour un pool peu profond : faux positif probable (wash/bot).
+  const ratio = volumeLiquidityRatio(candidate);
+  if (ratio !== null && ratio > config.maxVolumeLiquidityRatio) return false;
   return true;
+}
+
+/** Volume 1h rapporté à la liquidité mesurée ; null si la liquidité n'est pas mesurée. */
+export function volumeLiquidityRatio(
+  candidate: Pick<EarlyOpportunityCandidate, "volume1h" | "liquidityUsd">,
+): number | null {
+  const liquidity = normalizeLiquidityUsd(candidate.liquidityUsd);
+  if (liquidity === null || candidate.volume1h === null) return null;
+  return candidate.volume1h / liquidity;
+}
+
+export type EarlyTier = "solid" | "watch";
+
+/** « Traction solide » exige une accélération réellement mesurée et une force élevée. */
+export function earlyTier(
+  candidate: EarlyOpportunityCandidate,
+  config: EarlyOpportunityConfig,
+): EarlyTier {
+  const strength = computeEarlyStrength(candidate, config);
+  const acceleration = computeAcceleration(candidate);
+  const highRisk = (candidate.riskScore ?? 0) >= 55;
+  return !strength.insufficient &&
+    strength.score >= config.solidMinStrength &&
+    acceleration !== null &&
+    !highRisk
+    ? "solid"
+    : "watch";
 }
 
 
@@ -201,9 +252,15 @@ export function buildEarlyOpportunityMessage(
   const acceleration = computeAcceleration(candidate);
   const strength = computeEarlyStrength(candidate, config);
 
+  const tier = earlyTier(candidate, config);
+  const riskWarning =
+    candidate.riskScore !== null && candidate.riskScore !== undefined && candidate.riskScore >= 55
+      ? [`⚠️ ATTENTION : Risk Score ${candidate.riskScore}/100 (${candidate.riskLevel ?? "élevé"}) — opportunité à haut risque`, ""]
+      : [];
   return [
-    "🌱 EARLY OPPORTUNITY",
+    tier === "solid" ? "🌱 EARLY OPPORTUNITY — traction solide" : "👀 EARLY OPPORTUNITY — à surveiller",
     "",
+    ...riskWarning,
     `🪙 Token : $${candidate.symbol}`,
     `📛 Nom : ${candidate.name}`,
     "",
@@ -212,7 +269,9 @@ export function buildEarlyOpportunityMessage(
       ? `💪 Early Strength : données insuffisantes (${strength.passed}/${strength.measured} critères mesurés)`
       : `💪 Early Strength : ${strength.score}/100 (${strength.passed}/${strength.measured} critères Early mesurés satisfaits)`,
     "",
-    `👥 Acheteurs : ${candidate.buyers} (fenêtre ${config.minBuyers}–${config.maxBuyers})`,
+    `👥 Acheteurs distincts mesurés : ${candidate.distinctBuyers ?? "non mesuré"}`,
+    `🧾 Transactions d'achat 1h : ${candidate.buyTxns1h ?? "inconnu"}`,
+    `🎯 Critère acheteurs : ${candidate.buyers} (fenêtre ${config.minBuyers}–${config.maxBuyers})`,
     `💧 Liquidité : ${
       normalizeLiquidityUsd(candidate.liquidityUsd) !== null
         ? `${formatUsd(candidate.liquidityUsd as number)}${config.minLiquidityUsd > 0 ? ` (min ${formatUsd(config.minLiquidityUsd)})` : ""}`
@@ -223,7 +282,9 @@ export function buildEarlyOpportunityMessage(
     `⏱️ Âge : ${ageLabel} (max ${Math.round(config.maxAgeMinutes / 60)} h)`,
     `📊 Market Cap : ${candidate.marketCap !== null ? formatUsd(candidate.marketCap) : "inconnu"}`,
     "",
-    `⭐ Score Radar actuel : ${candidate.score !== null ? `${candidate.score}/100` : "inconnu"} (informatif uniquement)`,
+    `⭐ Opportunity Score : ${candidate.score !== null ? `${candidate.score}/100` : "inconnu"}`,
+    `🛡️ Risk Score : ${candidate.riskScore !== null && candidate.riskScore !== undefined ? `${candidate.riskScore}/100` : "non évaluable"}`,
+    `📶 Data Confidence : ${Math.round(candidate.confidence * 100)} %`,
     "",
     ...contractLinkLines(candidate.mint, candidate.pairUrl),
     "",

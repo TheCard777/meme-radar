@@ -23,6 +23,8 @@ import {
 } from "./early-opportunity.server";
 import { assessTokenRisk, type TokenRiskAssessment } from "./risk.server";
 import { summarizeRisk } from "./risk-scoring";
+import { readRiskAlertConfig, type RiskAlertConfig } from "./risk-alerts";
+import { processRiskAlert } from "./risk-alerts.server";
 import { evaluateTrackedToken, loadEnabledTrackedTokens } from "./token-tracking.server";
 import { nextEnrichAfterMiss, RECENT_WINDOW_MS, splitBatch } from "./enrich-queue";
 
@@ -42,6 +44,9 @@ export interface EnrichmentResult {
   earlyOpportunitiesCreated: number;
   /** Messages Telegram « Early Opportunity » réellement envoyés. */
   earlyOpportunitiesTelegramSent: number;
+  /** Alertes « POTENTIEL RUG PULL » créées / envoyées pendant ce cycle. */
+  riskAlertsCreated: number;
+  riskAlertsTelegramSent: number;
   /** Alertes « token suivi » (cloche) créées pendant ce cycle. */
   trackedAlertsCreated: number;
   /** Messages Telegram « token suivi » réellement envoyés. */
@@ -70,13 +75,14 @@ interface Settings {
   priorityThreshold: number;
   botActive: boolean;
   earlyOpportunity: EarlyOpportunityConfig;
+  riskAlerts: RiskAlertConfig;
 }
 
 async function readSettings(): Promise<Settings> {
   const { data } = await supabaseAdmin
     .from("bot_settings")
     .select(
-      "telegram_threshold, critical_threshold, status, early_opportunity_enabled, early_opportunity_min_buyers, early_opportunity_max_buyers, early_opportunity_max_age_minutes, early_opportunity_min_liquidity_usd, early_opportunity_min_volume_1h_usd, early_opportunity_acceleration_factor",
+      "telegram_threshold, critical_threshold, status, early_opportunity_enabled, early_opportunity_min_buyers, early_opportunity_max_buyers, early_opportunity_max_age_minutes, early_opportunity_min_liquidity_usd, early_opportunity_min_volume_1h_usd, early_opportunity_acceleration_factor, early_opportunity_max_volume_liquidity_ratio, early_opportunity_solid_min_strength, risk_alerts_enabled, risk_alert_min_confidence, risk_alert_cooldown_minutes",
     )
     .limit(1)
     .maybeSingle();
@@ -85,6 +91,7 @@ async function readSettings(): Promise<Settings> {
     priorityThreshold: data?.critical_threshold ?? 90,
     botActive: data?.status === "active",
     earlyOpportunity: readEarlyOpportunityConfig(data ?? null),
+    riskAlerts: readRiskAlertConfig(data ?? null),
   };
 }
 
@@ -179,6 +186,8 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
     topScore: null,
     earlyOpportunitiesCreated: 0,
     earlyOpportunitiesTelegramSent: 0,
+    riskAlertsCreated: 0,
+    riskAlertsTelegramSent: 0,
     trackedAlertsCreated: 0,
     trackedAlertsTelegramSent: 0,
     errors,
@@ -342,6 +351,28 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       price_usd: metrics.priceUsd ?? 0,
     });
 
+    // ---- Alerte « POTENTIEL RUG PULL » (dédupliquée, jamais bloquante)
+    if (assessment) {
+      try {
+        const riskOutcome = await processRiskAlert({
+          tokenId: token.id,
+          mint: token.mint_address,
+          symbol,
+          name: metrics.name ?? token.name,
+          risk: assessment.risk,
+          liquidityDropRatio: assessment.liquidityDropRatio,
+          launchedAt: token.launched_at,
+          pairUrl: metrics.pairUrl ?? null,
+          config: settings.riskAlerts,
+          botActive: settings.botActive,
+        });
+        if (riskOutcome.created) result.riskAlertsCreated += 1;
+        if (riskOutcome.telegramSent) result.riskAlertsTelegramSent += 1;
+      } catch (riskAlertError) {
+        errors.push(`risk-alert ${token.mint_address}: ${riskAlertError instanceof Error ? riskAlertError.message : String(riskAlertError)}`);
+      }
+    }
+
     // ---- Alerte « Early Opportunity » (indépendante du score et du niveau)
     // Traction précoce : âge <= 2 h, 60-150 acheteurs, volume 1h >= 5 000 $,
     // accélération >= 1,5x lorsqu'elle est réellement mesurable. Aucun minimum
@@ -368,6 +399,11 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
         volume5m: metrics.volume5m ?? null,
         ageMinutes,
         pairUrl: metrics.pairUrl ?? null,
+        distinctBuyers: onChainBuyers.has(token.id) ? (onChainBuyers.get(token.id) ?? null) : null,
+        buyTxns1h: metrics.buyers1h ?? null,
+        riskScore: assessment?.risk.score ?? null,
+        riskLevel: assessment?.risk.level ?? null,
+        riskConfidence: assessment?.risk.confidence ?? null,
       };
       if (matchesEarlyOpportunity(candidate, settings.earlyOpportunity)) {
         const outcome = await recordEarlyOpportunity(candidate, settings.earlyOpportunity, {

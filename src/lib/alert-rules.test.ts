@@ -44,6 +44,8 @@ describe("configuration Early Opportunity recalibrée", () => {
       minLiquidityUsd: 0,
       minVolume1hUsd: 5_000,
       accelerationFactor: 1.5,
+      maxVolumeLiquidityRatio: 15,
+      solidMinStrength: 80,
     });
     expect(EARLY_OPPORTUNITY_DEFAULTS.maxBuyers).toBe(150);
   });
