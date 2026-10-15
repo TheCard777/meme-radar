@@ -347,6 +347,10 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
         holders_top10_share: holdersTop10Share,
         status: tokenStatusForLevel(scoring.level),
         last_enriched_at: now.toISOString(),
+        // Aucun marché trouvé (réponse valide) : pas une erreur, délai progressif.
+        ...(metrics
+          ? { market_miss_count: 0, next_enrich_at: null }
+          : nextEnrichAfterMiss(token.market_miss_count ?? 0, token.launched_at, now)),
         // Risque : champs séparés du score d'opportunité. `null` = non mesuré.
         ...(assessment
           ? {
