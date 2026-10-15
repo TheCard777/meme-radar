@@ -5,6 +5,7 @@
  * des données réelles déjà produites par le pipeline. Aucune donnée inventée :
  * ce qui est inconnu est explicitement listé comme manquant.
  */
+import { contractLines, contractLinkLines } from "./telegram-token-block";
 
 export type NowSnapshotInput = {
   symbol: string;
@@ -79,6 +80,9 @@ export function buildNowSnapshotMessage(input: NowSnapshotInput): string {
     "⚡ NOW — analyse instantanée",
     "",
     `🪙 Token : $${input.symbol}${input.name ? ` (${input.name})` : ""}`,
+    "",
+    ...contractLines(input.mint),
+    "",
     `⏱️ Âge : ${ageLabel(input.launchedAt)}`,
     `💰 Market cap : ${usd(input.marketCap)}`,
     `💧 Liquidité : ${usd(input.liquidityUsd)}`,
@@ -127,8 +131,7 @@ export function buildNowSnapshotMessage(input: NowSnapshotInput): string {
 
   lines.push(
     "",
-    `🔗 DEX : ${input.pairUrl ?? `https://dexscreener.com/solana/${input.mint}`}`,
-    `🔗 Explorer : https://solscan.io/token/${input.mint}`,
+    ...contractLinkLines(input.mint, input.pairUrl),
     "",
     input.refreshedAt
       ? `Analyse ponctuelle rafraîchie à la demande (${new Date(input.refreshedAt).toISOString().slice(11, 16)} UTC) — observation uniquement, aucun trading automatique.`
