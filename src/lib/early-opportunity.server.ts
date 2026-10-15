@@ -22,6 +22,7 @@
  * Le scoring des tokens n'est pas modifié par ce module.
  */
 
+import { contractLines, contractLinkLines } from "./telegram-token-block";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendRawTelegramMessage } from "./telegram.server";
 import { formatUsd } from "./radar-service-format";
@@ -205,6 +206,8 @@ export function buildEarlyOpportunityMessage(
     "",
     `🪙 Token : $${candidate.symbol}`,
     `📛 Nom : ${candidate.name}`,
+    "",
+    ...contractLines(candidate.mint),
     strength.insufficient
       ? `💪 Early Strength : données insuffisantes (${strength.passed}/${strength.measured} critères mesurés)`
       : `💪 Early Strength : ${strength.score}/100 (${strength.passed}/${strength.measured} critères Early mesurés satisfaits)`,
@@ -222,8 +225,7 @@ export function buildEarlyOpportunityMessage(
     "",
     `⭐ Score Radar actuel : ${candidate.score !== null ? `${candidate.score}/100` : "inconnu"} (informatif uniquement)`,
     "",
-    `🔗 DEX : ${candidate.pairUrl ?? `https://dexscreener.com/solana/${candidate.mint}`}`,
-    `🔗 Explorer : https://solscan.io/token/${candidate.mint}`,
+    ...contractLinkLines(candidate.mint, candidate.pairUrl),
     "",
     "Détection de traction précoce — observation on-chain uniquement.",
     "Ni conseil financier, ni garantie, aucun trading automatique.",
@@ -273,7 +275,7 @@ export async function recordEarlyOpportunity(
   }
 
   try {
-    const sent = await sendRawTelegramMessage(buildEarlyOpportunityMessage(candidate, config), "early_opportunity");
+    const sent = await sendRawTelegramMessage(buildEarlyOpportunityMessage(candidate, config), "early_opportunity", { copyMint: candidate.mint });
     await supabaseAdmin
       .from("early_opportunity_alerts")
       .update({

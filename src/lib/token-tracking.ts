@@ -8,6 +8,7 @@
  * Aucune donnée inventée : une métrique inconnue reste `null` et n'émet rien.
  * Aucun trading, aucune clé privée, aucun second système de surveillance.
  */
+import { contractLines, contractLinkLines } from "./telegram-token-block";
 
 export type TrackedMetrics = {
   score: number | null;
@@ -311,6 +312,8 @@ export function buildTrackedAlertMessage(params: {
     `🪙 Token : $${params.symbol}${params.name ? ` (${params.name})` : ""}`,
     `📊 État : ${MOMENTUM_LABEL[params.state]}`,
     "",
+    ...contractLines(params.mint),
+    "",
     ...params.events.map((e) => `• ${e.label}\n  ${e.detail}`),
     "",
     `⭐ Score Radar : ${params.current.score !== null ? `${params.current.score}/100` : "inconnu"} (informatif)`,
@@ -319,8 +322,7 @@ export function buildTrackedAlertMessage(params: {
     `📈 Volume 1h : ${usd(params.current.volume1h)}`,
     `👥 Acheteurs : ${params.current.buyers ?? "inconnu"}`,
     "",
-    `🔗 DEX : ${params.pairUrl ?? `https://dexscreener.com/solana/${params.mint}`}`,
-    `🔗 Explorer : https://solscan.io/token/${params.mint}`,
+    ...contractLinkLines(params.mint, params.pairUrl),
     "",
     "Suivi personnalisé — observation uniquement, aucun trading automatique.",
   ].join("\n");
