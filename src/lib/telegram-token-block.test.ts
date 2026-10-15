@@ -33,7 +33,7 @@ describe("bloc contrat Telegram", () => {
   it("encode le composant URL sans modifier la valeur copiée", () => {
     const odd = "abc/def?x";
     expect(solscanTokenUrl(odd)).toBe("https://solscan.io/token/abc%2Fdef%3Fx");
-    expect(copyMintKeyboard(odd)?.inline_keyboard[0][0].copy_text.text).toBe(odd);
+    expect(copyMintKeyboard(odd)?.inline_keyboard[0]?.[0]?.copy_text.text).toBe(odd);
   });
 
   it("clavier copy_text avec la valeur exacte du mint", () => {
