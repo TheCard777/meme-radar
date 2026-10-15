@@ -39,7 +39,7 @@ describe("bloc contrat Telegram", () => {
   it("clavier copy_text avec la valeur exacte du mint", () => {
     const kb = copyMintKeyboard(MINT);
     expect(kb).toEqual({
-      inline_keyboard: [[{ text: "📋 Copier le CA", copy_text: { text: MINT } }]],
+      inline_keyboard: [[{ text: "📋 Copier le contrat", copy_text: { text: MINT } }]],
     });
     expect(copyMintKeyboard("")).toBeNull();
     expect(copyMintKeyboard("x".repeat(257))).toBeNull();

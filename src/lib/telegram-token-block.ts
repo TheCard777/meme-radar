@@ -42,7 +42,7 @@ export type CopyKeyboard = {
 /** Clavier inline « Copier le CA » (null si le mint est hors limites Bot API). */
 export function copyMintKeyboard(mint: string | null | undefined): CopyKeyboard | null {
   if (typeof mint !== "string" || mint.length < 1 || mint.length > 256) return null;
-  return { inline_keyboard: [[{ text: "📋 Copier le CA", copy_text: { text: mint } }]] };
+  return { inline_keyboard: [[{ text: "📋 Copier le contrat", copy_text: { text: mint } }]] };
 }
 
 export function usdOrNA(value: number | null | undefined): string {
