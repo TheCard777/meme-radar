@@ -91,16 +91,32 @@ export class SolanaLogCollector {
     await this.report("stopped");
   }
 
+  /**
+   * Ne lève jamais : une panne transitoire de l'API est journalisée et le
+   * prochain poll réessaie (l'état courant du WebSocket est conservé).
+   * Une erreur permanente (ex. 401 jeton invalide) est journalisée en
+   * `level: "error"` avec `permanent: true` à chaque poll, jamais masquée.
+   */
   private async syncDesiredState() {
-    const desired = await this.options.store.readDesiredState();
-    if (desired === "running" && !this.ws && !this.stopped) {
-      void this.connectLoop();
-    } else if (desired === "stopped" && this.ws) {
-      this.teardownSocket();
-      this.log({ level: "info", event: "stopped_by_desired_state" });
-      await this.report("stopped");
-    } else if (this.ws) {
-      await this.report("running");
+    try {
+      const desired = await this.options.store.readDesiredState();
+      if (desired === "running" && !this.ws && !this.stopped) {
+        void this.connectLoop();
+      } else if (desired === "stopped" && this.ws) {
+        this.teardownSocket();
+        this.log({ level: "info", event: "stopped_by_desired_state" });
+        await this.report("stopped");
+      } else if (this.ws) {
+        await this.report("running");
+      }
+    } catch (error) {
+      const name = error instanceof Error ? error.name : "Error";
+      this.log({
+        level: name === "ApiTransientError" ? "warn" : "error",
+        event: "desired_state_sync_failed",
+        permanent: name !== "ApiTransientError",
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -348,6 +364,16 @@ export class SolanaLogCollector {
   }
 
   private async report(state: CollectorRuntimeState, error?: string) {
+    await this.reportUnsafe(state, error).catch((failure: unknown) => {
+      this.log({
+        level: "warn",
+        event: "report_state_failed",
+        message: failure instanceof Error ? failure.message : String(failure),
+      });
+    });
+  }
+
+  private async reportUnsafe(state: CollectorRuntimeState, error?: string) {
     await this.options.store.reportState({
       runtimeState: state,
       source: this.options.programFilter
