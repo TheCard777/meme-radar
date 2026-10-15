@@ -36,6 +36,9 @@ export async function processRiskAlert(params: {
     return { level, created: false, telegramSent: false, error: null };
   }
 
+  // Bot en pause : aucune notification ni verrou de déduplication.
+  if (!params.botActive) return { level, created: false, telegramSent: false, error: null };
+
   const message = buildRiskAlertMessage({ ...params, level, risk: params.risk });
   let sent = false;
   let telegramError: string | null = params.botActive ? null : "Bot en pause — non envoyé";
