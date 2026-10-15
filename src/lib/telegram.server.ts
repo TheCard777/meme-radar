@@ -6,6 +6,9 @@
  */
 
 import type { AlertCategory } from "./telegram-recipients";
+import { copyMintKeyboard, type CopyKeyboard } from "./telegram-token-block";
+
+export type SendOptions = { parseMode?: "HTML"; replyMarkup?: CopyKeyboard | null };
 
 export interface TelegramStatus {
   configured: boolean;
@@ -74,7 +77,7 @@ export async function getTelegramStatus(): Promise<TelegramStatus> {
 export async function sendTelegramToChat(
   chatId: string,
   text: string,
-  options: { parseMode?: "HTML" } = {},
+  options: SendOptions = {},
 ): Promise<{ sent: boolean; reason?: string }> {
   const config = readTelegramConfig();
   if (!config) return { sent: false, reason: "Secrets Telegram non configurés" };
@@ -87,6 +90,7 @@ export async function sendTelegramToChat(
         text,
         disable_web_page_preview: true,
         ...(options.parseMode ? { parse_mode: options.parseMode } : {}),
+        ...(options.replyMarkup ? { reply_markup: options.replyMarkup } : {}),
       }),
     });
     const payload = (await response.json()) as { ok: boolean; description?: string };
@@ -108,7 +112,7 @@ export async function sendTelegramToChat(
 async function broadcast(
   text: string,
   category: AlertCategory,
-  options: { parseMode?: "HTML" } = {},
+  options: SendOptions = {},
 ): Promise<{ sent: boolean; reason?: string; deliveredTo: number }> {
   const config = readTelegramConfig();
   if (!config || !config.chatId) {
@@ -140,8 +144,9 @@ async function broadcast(
 export async function sendRawTelegramMessage(
   text: string,
   category: AlertCategory = "general",
+  options: { copyMint?: string | null } = {},
 ): Promise<{ sent: boolean; reason?: string; deliveredTo?: number }> {
-  return broadcast(text, category);
+  return broadcast(text, category, { replyMarkup: copyMintKeyboard(options.copyMint) });
 }
 
 export interface AlertPayload {
@@ -150,6 +155,8 @@ export interface AlertPayload {
   level: "info" | "signal" | "critical";
   message: string;
   simulated: boolean;
+  /** Mint exact (base) : ajoute le bouton inline « Copier le CA ». */
+  mint?: string | null;
 }
 
 /**
@@ -161,8 +168,11 @@ export async function sendAlertTelegram(
   category: AlertCategory = "general",
 ): Promise<{ sent: boolean; reason?: string; deliveredTo?: number }> {
   const prefix = alert.level === "critical" ? "🚨 PRIORITÉ" : "📡 SIGNAL";
-  const tag = alert.simulated ? "\n<i>Donnée de simulation — aucun trading</i>" : "";
-  const text = `${prefix} ${alert.symbol} — score ${alert.score}/100\n${alert.message}${tag}`;
-  return broadcast(text, category, { parseMode: "HTML" });
+  const tag = alert.simulated ? "\nDonnée de simulation — aucun trading" : "";
+  // Texte brut (pas de parse_mode) : aucun risque d'injection via nom/symbole.
+  const text = alert.mint
+    ? `${alert.message}${tag}`
+    : `${prefix} ${alert.symbol} — score ${alert.score}/100\n${alert.message}${tag}`;
+  return broadcast(text, category, { replyMarkup: copyMintKeyboard(alert.mint) });
 }
 

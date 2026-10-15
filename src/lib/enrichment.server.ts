@@ -115,71 +115,8 @@ function fmtUsd(value: number | null): string {
   return `${Math.round(value).toLocaleString("fr-FR")} $`;
 }
 
-/** Message Telegram : token, score, sous-scores, marché, horodatage, liens. */
-export function buildAlertMessage(params: {
-  symbol: string;
-  name: string;
-  mint: string;
-  scoring: ScoringResult;
-  metrics: MarketMetrics | undefined;
-  level: "signal" | "priority";
-  smartWallets?: number | null;
-  /** Risque mesuré (facultatif) : ajouté au message sans bloquer l'alerte. */
-  risk?: TokenRiskAssessment["risk"] | null;
-}): string {
-  const { scoring, metrics } = params;
-  const top = scoring.subScores
-    .filter((s) => s.normalized !== null)
-    .sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
-    .slice(0, 3)
-    .map((s) => `• ${s.label} : ${s.points}/${s.weight} (${s.detail})`)
-    .join("\n");
-
-  const lines = [
-    `${params.name} (${params.symbol})`,
-    `${params.level === "priority" ? "PRIORITÉ" : "SIGNAL"} — score ${scoring.score}/100`,
-    `Fiabilité des données : ${Math.round(scoring.confidence * 100)} %`,
-    `Smart wallets qualifiés : ${params.smartWallets ?? "inconnu"}`,
-    "",
-    "Sous-scores principaux :",
-    top || "• aucun sous-score disponible",
-    "",
-    `Market cap : ${fmtUsd(metrics?.marketCap ?? null)}`,
-    `Liquidité : ${fmtUsd(metrics?.liquidityUsd ?? null)}`,
-    `Volume 24h : ${fmtUsd(metrics?.volume24h ?? null)}`,
-    `Acheteurs 1h : ${metrics?.buyers1h ?? "inconnu"}`,
-    `Volume 1h : ${fmtUsd(metrics?.volume1h ?? null)}`,
-  ];
-
-  if (scoring.missing.length > 0) {
-    lines.push(`Données manquantes : ${scoring.missing.join(", ")}`);
-  }
-
-  // Risque : informatif, jamais bloquant. Absent si non évaluable.
-  if (params.risk && params.risk.score !== null) {
-    lines.push(
-      "",
-      `Risque : ${params.risk.score}/100 (${params.risk.level}) — fiabilité ${Math.round(params.risk.confidence * 100)} %`,
-      ...summarizeRisk(params.risk).map((line) => `• ${line}`),
-    );
-    if (params.risk.missing.length > 0) {
-      lines.push(`Risque non mesuré : ${params.risk.missing.join(", ")}`);
-    }
-  } else if (params.risk) {
-    lines.push("", "Risque : non évaluable (données on-chain insuffisantes).");
-  }
-
-  lines.push(
-    "",
-    `Horodatage : ${new Date().toISOString()}`,
-    `DEX : ${metrics?.pairUrl ?? `https://dexscreener.com/solana/${params.mint}`}`,
-    `Explorer : https://solscan.io/token/${params.mint}`,
-    "",
-    "Indicateur d'observation — ni conseil financier ni garantie. Aucun trading automatique.",
-  );
-
-  return lines.join("\n");
-}
+export { buildAlertMessage } from "./signal-alert-message";
+import { buildAlertMessage } from "./signal-alert-message";
 
 /**
  * Enrichit au maximum `limit` tokens réels (les moins récemment enrichis d'abord).
@@ -503,6 +440,7 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       scoring,
       metrics,
       level: scoring.level,
+      launchedAt: token.launched_at,
       smartWallets: token.smart_wallet_count > 0 ? token.smart_wallet_count : null,
       risk: assessment?.risk ?? null,
     });
@@ -542,6 +480,7 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
       level: scoring.level === "priority" ? "critical" : "signal",
       message,
       simulated: false,
+      mint: token.mint_address,
     }, "general");
     if (sent.sent) result.telegramSent += 1;
     else result.telegramSkipped = sent.reason ?? "Envoi Telegram impossible";
