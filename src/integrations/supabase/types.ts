@@ -559,11 +559,13 @@ export type Database = {
           lp_status: string
           market_cap: number
           market_metrics: Json
+          market_miss_count: number
           market_source: string
           mint_address: string
           missing_metrics: Json
           name: string
           new_buyers: number
+          next_enrich_at: string | null
           price_change_1h: number
           price_usd: number
           risk_confidence: number
@@ -605,11 +607,13 @@ export type Database = {
           lp_status?: string
           market_cap?: number
           market_metrics?: Json
+          market_miss_count?: number
           market_source?: string
           mint_address: string
           missing_metrics?: Json
           name: string
           new_buyers?: number
+          next_enrich_at?: string | null
           price_change_1h?: number
           price_usd?: number
           risk_confidence?: number
@@ -651,11 +655,13 @@ export type Database = {
           lp_status?: string
           market_cap?: number
           market_metrics?: Json
+          market_miss_count?: number
           market_source?: string
           mint_address?: string
           missing_metrics?: Json
           name?: string
           new_buyers?: number
+          next_enrich_at?: string | null
           price_change_1h?: number
           price_usd?: number
           risk_confidence?: number
