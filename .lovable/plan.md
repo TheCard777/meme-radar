@@ -36,5 +36,8 @@ Les noms de champs exacts du JSON peuvent varier selon la version de Turnkey. Si
 4. Signature, puis simulation par le RPC, toujours sans envoi.
 5. Premier vrai envoi uniquement sur votre validation explicite.
 
-## Point toujours ouvert
-Plafond global : garder 60 USD engagés, ou le ramener à 15 USD ?
+## Limites confirmées pour le trading réel
+- Capital engagé en même temps : **15 USD maximum** (au lieu de 60). La simulation et la mémoire du projet seront alignées à l'étape de code, sur votre accord.
+- Inchangé : 5 USD par position, 15 USD par token, 3 achats et 15 USD de nouvelles entrées par jour, perte journalière maximale de -15 USD, mêmes règles d'entrée et de sortie.
+- **Compatibilité** : 5 USD par position avec 15 USD au total, cela fait au plus 3 positions ouvertes en même temps. C'est cohérent avec les 3 achats par jour. Comme on ne renforce jamais une position, le plafond de 15 USD par token ne sera jamais atteint.
+- **Le stop de -15 USD n'est pas une garantie** : c'est une règle du logiciel. En cas de chute brutale, de liquidité retirée (rug), de glissement de prix ou de frais, la vente peut se faire bien plus bas que prévu. Un token peut même devenir invendable. La vraie limite, c'est le montant laissé sur le compte SMD : n'y mettez pas plus de 15 USD, plus un peu de SOL pour les frais.
