@@ -8,6 +8,7 @@ import { TelegramRecipientsPanel } from "@/components/radar/TelegramRecipientsPa
 import { SystemStatus } from "@/components/radar/SystemStatus";
 import { CollectorPanel } from "@/components/radar/CollectorPanel";
 import { LivePrepPanel } from "@/components/radar/LivePrepPanel";
+import { LiveTradingPanel } from "@/components/radar/LiveTradingPanel";
 import {
   SettingsLockButton,
   SettingsLockScreen,
@@ -103,6 +104,7 @@ function SettingsPage() {
           </section>
 
           <LivePrepPanel />
+          <LiveTradingPanel />
 
           <section aria-label="Seuils de scoring" className="panel space-y-6 p-4 sm:p-5">
             <h2 className="text-base font-semibold">Seuils de scoring</h2>
