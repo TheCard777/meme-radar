@@ -7,6 +7,7 @@ const MINT = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263";
 // Base factice : chaque table renvoie une ligne fixe, quelle que soit la chaîne de filtres.
 const tables: Record<string, unknown> = {};
 const updates: { table: string; patch: Record<string, unknown> }[] = [];
+const inserts: { table: string; row: Record<string, unknown> }[] = [];
 function chain(table: string): unknown {
   const p: unknown = new Proxy(
     {},
@@ -16,6 +17,7 @@ function chain(table: string): unknown {
           return (ok: (v: unknown) => void) => ok({ data: tables[table] ?? null, error: null });
         return (arg: Record<string, unknown>) => {
           if (prop === "update") updates.push({ table, patch: arg });
+          if (prop === "insert") inserts.push({ table, row: arg });
           return p;
         };
       },
@@ -55,6 +57,7 @@ const json = (status: number, body: unknown) =>
 beforeEach(() => {
   rpcCalls.length = 0;
   updates.length = 0;
+  inserts.length = 0;
   tables["bot_settings"] = { live_kill_switch: false, live_trading_armed: true };
   tables["trade_positions"] = [];
   vi.stubEnv("SOLANA_RPC_URL", "https://rpc.test");
@@ -125,40 +128,106 @@ describe("test de signature Turnkey", () => {
   });
 });
 
+const ORDER_ID = "00000000-0000-4000-8000-000000000001";
+const order = () => ({
+  id: ORDER_ID,
+  side: "buy",
+  mint: MINT,
+  symbol: "TST",
+  usd_amount: 5,
+  expected_out_raw: "5000000000",
+  out_decimals: 6,
+  price_usd: 0.001,
+  liquidity_usd: 25_000,
+  slippage_bps: 300,
+  price_impact_pct: 0.5,
+  fee_lamports: 100_000,
+  unsigned_tx: "AQAB",
+  expires_at: new Date(Date.now() + 30_000).toISOString(),
+});
+
+/** Simulation réussie ; `statuses` répond à getSignatureStatuses. */
+function stubNetwork(statuses: () => Response = () => json(200, { result: { value: [null] } })) {
+  const base = globalThis.fetch;
+  vi.stubGlobal("fetch", async (url: string | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body ?? "{}"));
+    if (body.method === "simulateTransaction") {
+      rpcCalls.push(body.method);
+      return json(200, { result: { value: { err: null } } });
+    }
+    if (body.method === "getSignatureStatuses") return statuses();
+    return base(url, init);
+  });
+}
+
 describe("validation d'ordre avec LIVE_TRADING_ENABLED=false", () => {
   it("signe et simule à blanc, sans sendTransaction", async () => {
-    tables["trade_orders"] = {
-      id: "00000000-0000-4000-8000-000000000001",
-      side: "buy",
-      mint: MINT,
-      symbol: "TST",
-      usd_amount: 5,
-      expected_out_raw: "5000000000",
-      out_decimals: 6,
-      price_usd: 0.001,
-      slippage_bps: 300,
-      price_impact_pct: 0.5,
-      fee_lamports: 100_000,
-      unsigned_tx: "AQAB",
-      expires_at: new Date(Date.now() + 30_000).toISOString(),
-    };
-    rpcCalls.length = 0;
-    const sim = vi.fn(() => json(200, { result: { value: { err: null } } }));
-    const base = globalThis.fetch;
-    vi.stubGlobal("fetch", async (url: string | URL, init?: RequestInit) => {
-      const body = JSON.parse(String(init?.body ?? "{}"));
-      if (body.method === "simulateTransaction") {
-        rpcCalls.push(body.method);
-        return sim();
-      }
-      return base(url, init);
-    });
+    tables["trade_orders"] = order();
+    stubNetwork();
     const { confirmOrder } = await import("./live-trading.server");
-    const r = await confirmOrder("00000000-0000-4000-8000-000000000001");
+    const r = await confirmOrder(ORDER_ID);
     expect(r.status).toBe("dry_run");
     expect(r.message).toMatch(/LIVE_TRADING_ENABLED/);
-    expect(sim).toHaveBeenCalledOnce();
+    expect(rpcCalls.filter((m) => m === "simulateTransaction")).toHaveLength(1);
     expect(rpcCalls).not.toContain("sendTransaction");
     expect(updates.at(-1)?.patch).toMatchObject({ status: "cancelled" });
+    expect(inserts).toHaveLength(0);
+  });
+});
+
+describe("envoi réel : suivi de la confirmation", () => {
+  beforeEach(() => {
+    vi.stubEnv("LIVE_TRADING_ENABLED", "true");
+    tables["trade_orders"] = order();
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  async function confirm() {
+    const { confirmOrder } = await import("./live-trading.server");
+    const p = confirmOrder(ORDER_ID);
+    let done = false;
+    void p.finally(() => (done = true));
+    while (!done) await vi.advanceTimersByTimeAsync(2_000);
+    return p;
+  }
+
+  it("achat non confirmé en 30 s : position enregistrée par prudence", async () => {
+    stubNetwork();
+    const r = await confirm();
+    expect(rpcCalls).toContain("sendTransaction");
+    expect(r.status).toBe("sent");
+    expect(r.message).toMatch(/position enregistrée/);
+    expect(inserts).toEqual([
+      {
+        table: "trade_positions",
+        row: expect.objectContaining({ mint: MINT, buy_signature: "SIGNATURE" }),
+      },
+    ]);
+  });
+
+  it("erreur RPC pendant le suivi : pas marqué échoué, position enregistrée", async () => {
+    stubNetwork(() => json(200, { error: { message: "rate limited" } }));
+    const r = await confirm();
+    expect(r.status).toBe("sent");
+    expect(inserts).toHaveLength(1);
+  });
+
+  it("achat confirmé : position enregistrée", async () => {
+    stubNetwork(() =>
+      json(200, { result: { value: [{ confirmationStatus: "confirmed", err: null }] } }),
+    );
+    const r = await confirm();
+    expect(r.message).toBe("Transaction confirmée.");
+    expect(inserts).toHaveLength(1);
+  });
+
+  it("transaction rejetée par le réseau : aucune position", async () => {
+    stubNetwork(() =>
+      json(200, { result: { value: [{ err: { InstructionError: [0, "Custom"] } }] } }),
+    );
+    const r = await confirm();
+    expect(r.status).toBe("failed");
+    expect(inserts).toHaveLength(0);
   });
 });

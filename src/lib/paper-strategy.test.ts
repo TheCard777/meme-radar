@@ -30,7 +30,7 @@ describe("paper strategy V1", () => {
     ["pool inconnu", { dex: null, postMigrationPool: null }],
     ["trop jeune", { ageMinutes: 3 }],
     ["trop vieux", { ageMinutes: 121 }],
-    ["score 89", { opportunityScore: 89 }],
+    ["score 79", { opportunityScore: 79 }],
     ["risque 30", { riskScore: 30 }],
     ["confiance risque inconnue", { riskConfidence: null }],
     ["confiance score 0.79", { opportunityConfidence: 0.79 }],

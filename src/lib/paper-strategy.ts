@@ -13,7 +13,7 @@ export const REAL_TRADING_ENABLED = false as const;
 export const PAPER_STRATEGY_V1 = Object.freeze({
   minAgeMinutes: 5,
   maxAgeMinutes: 120,
-  minOpportunityScore: 90,
+  minOpportunityScore: 80,
   maxRiskScore: 30, // strictement inférieur
   minConfidence: 0.8, // pour les deux scores
   minLiquidityUsd: 20_000,

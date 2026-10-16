@@ -311,10 +311,11 @@ export async function confirmOrder(id: string): Promise<ConfirmResult> {
     let txErr: unknown = null;
     for (let i = 0; i < 15 && !confirmed; i++) {
       await new Promise((r) => setTimeout(r, 2000));
+      // Une erreur RPC ici ne prouve pas l'échec de la transaction : on continue d'attendre.
       const st = await rpc<{ value: ({ confirmationStatus?: string; err: unknown } | null)[] }>(
         "getSignatureStatuses", [[sig]],
-      );
-      const s = st.value[0];
+      ).catch(() => null);
+      const s = st?.value[0];
       if (s?.err) { txErr = s.err; break; }
       if (s?.confirmationStatus === "confirmed" || s?.confirmationStatus === "finalized") confirmed = true;
     }
@@ -322,17 +323,30 @@ export async function confirmOrder(id: string): Promise<ConfirmResult> {
       await finish(id, { status: "failed", error: `Transaction rejetée : ${JSON.stringify(txErr)}` });
       return { status: "failed", message: "Transaction échouée sur le réseau, rien n'a été échangé (hors frais).", signature: sig };
     }
-    if (!confirmed) {
-      await finish(id, { error: "Envoyée, confirmation non reçue en 30 s — vérifiez sur Solscan" });
-      return { status: "sent", message: "Envoyée mais pas encore confirmée. Vérifiez sur Solscan.", signature: sig };
-    }
+    // Achat : position enregistrée même sans confirmation, pour que les plafonds la comptent et que la
+    // vente reste possible. Côté prudent : si l'achat n'est jamais passé, la vente échouera faute de tokens.
     if (o.side === "buy") {
-      await d.from("trade_positions").insert({
+      const { error: pe } = await d.from("trade_positions").insert({
         mint: o.mint, symbol: o.symbol, stake_usd: o.usd_amount, token_amount_raw: o.expected_out_raw,
         token_decimals: o.out_decimals, entry_price_usd: o.price_usd, entry_liquidity_usd: o.liquidity_usd,
         buy_signature: sig,
       });
-    } else if (o.position_id) {
+      if (pe) {
+        await finish(id, { error: `Achat envoyé mais position non enregistrée : ${pe.message}` });
+        return { status: "sent", message: `Achat envoyé mais position non enregistrée (${pe.message}). Vérifiez sur Solscan.`, signature: sig };
+      }
+    }
+    if (!confirmed) {
+      await finish(id, { error: "Envoyée, confirmation non reçue en 30 s — vérifiez sur Solscan" });
+      return {
+        status: "sent",
+        message: o.side === "buy"
+          ? "Achat envoyé mais pas encore confirmé : position enregistrée par prudence. Vérifiez sur Solscan."
+          : "Vente envoyée mais pas encore confirmée : position laissée ouverte. Vérifiez sur Solscan.",
+        signature: sig,
+      };
+    }
+    if (o.side === "sell" && o.position_id) {
       const { data: p } = await d.from("trade_positions").select("stake_usd").eq("id", o.position_id).single();
       await d.from("trade_positions").update({
         status: "closed", closed_at: new Date().toISOString(), exit_reason: o.exit_reason ?? "manuel",
