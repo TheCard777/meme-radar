@@ -207,7 +207,8 @@ export async function createSellOrder(positionId: string, exitReason: string | n
   return data.id as string;
 }
 
-type OrderRow = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type OrderRow = any;
 
 export async function orderChecks(o: OrderRow, nowIso = new Date().toISOString()): Promise<PreflightCheck[]> {
   let market: number | null = null;
@@ -347,8 +348,8 @@ export async function cancelOrder(id: string) {
 export async function setKillSwitch(on: boolean) {
   const d = await db();
   const { data: s } = await d.from("bot_settings").select("id").limit(1).single();
-  const patch: OrderRow = { live_kill_switch: on };
-  if (on) patch.live_trading_armed = false;
+  const patch: Record<string, boolean> = { live_kill_switch: on };
+  if (on) patch["live_trading_armed"] = false;
   await d.from("bot_settings").update(patch).eq("id", s?.id);
   if (on) await d.from("trade_orders").update({ status: "cancelled", error: "Arrêt d'urgence" }).eq("status", "pending");
 }
