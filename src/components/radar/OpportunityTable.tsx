@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 /** Lignes rendues à la fois ; « Afficher plus » en ajoute autant. */
-const VISIBLE_STEP = 50;
+const VISIBLE_STEP = 20;
 
 
 type SortMode = "score" | "newest";
@@ -297,7 +297,7 @@ export function OpportunityTable({
           </span>
           {canShowMore ? (
             <Button size="sm" variant="secondary" onClick={() => setVisible((v) => v + VISIBLE_STEP)}>
-              Afficher plus
+              Voir plus (+20)
             </Button>
           ) : hasMore && onLoadMore ? (
             <Button size="sm" variant="secondary" disabled={loadingMore} onClick={() => { onLoadMore(); setVisible((v) => v + VISIBLE_STEP); }}>
