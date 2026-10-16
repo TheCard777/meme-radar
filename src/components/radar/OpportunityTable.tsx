@@ -14,6 +14,11 @@ import { ScoreBadge, StatusPill } from "./ScoreBadge";
 import { RiskBadge } from "./RiskBadge";
 import { TrackBell } from "./TrackBell";
 import { NowButton } from "./NowButton";
+import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+/** Lignes rendues à la fois ; « Afficher plus » en ajoute autant. */
+const VISIBLE_STEP = 50;
 
 
 type SortMode = "score" | "newest";
@@ -21,12 +26,20 @@ type SortMode = "score" | "newest";
 export function OpportunityTable({
   tokens,
   onSelect,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
 }: {
   tokens: TokenRow[];
   onSelect: (token: TokenRow) => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }) {
   const [sortBy, setSortBy] = useState<SortMode>("score");
   const [search, setSearch] = useState("");
+  const [visible, setVisible] = useState(VISIBLE_STEP);
+  const isMobile = useIsMobile();
 
   const normalizedSearch = search.trim().toLowerCase();
 
@@ -50,6 +63,9 @@ export function OpportunityTable({
     );
   }, [filteredTokens, sortBy]);
 
+  const shownTokens = useMemo(() => sortedTokens.slice(0, visible), [sortedTokens, visible]);
+  const canShowMore = sortedTokens.length > visible;
+
   const realCount = filteredTokens.filter((token) => !token.is_simulated).length;
   const demoCount = filteredTokens.length - realCount;
   const totalCount = tokens.length;
@@ -64,7 +80,10 @@ export function OpportunityTable({
             <Input
               type="search"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setVisible(VISIBLE_STEP);
+              }}
               placeholder="Rechercher un token, nom ou mint…"
               aria-label="Rechercher une opportunité"
               className="h-8 w-full pl-8 pr-7 text-xs sm:w-64"
@@ -112,8 +131,9 @@ export function OpportunityTable({
         </div>
       </div>
 
-      {/* Desktop */}
-      <div className="hidden overflow-x-auto md:block">
+      {/* Desktop — un seul des deux rendus est monté selon la taille d'écran */}
+      {!isMobile && (
+      <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <caption className="sr-only">
             {sortBy === "score"
@@ -135,7 +155,7 @@ export function OpportunityTable({
             </tr>
           </thead>
           <tbody>
-            {sortedTokens.map((token) => (
+            {shownTokens.map((token) => (
               <tr
                 key={token.id}
                 tabIndex={0}
@@ -205,10 +225,12 @@ export function OpportunityTable({
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Mobile */}
-      <ul className="divide-y divide-border/60 md:hidden">
-        {sortedTokens.map((token) => (
+      {isMobile && (
+      <ul className="divide-y divide-border/60">
+        {shownTokens.map((token) => (
           <li key={token.id} className="relative">
             <div className="absolute right-3 top-4 z-10 flex items-center gap-1.5">
               <NowButton token={token} />
@@ -266,6 +288,24 @@ export function OpportunityTable({
           </li>
         ))}
       </ul>
+      )}
+
+      {(canShowMore || hasMore) && (
+        <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground">
+          <span>
+            {shownTokens.length} affichés sur {sortedTokens.length} chargés
+          </span>
+          {canShowMore ? (
+            <Button size="sm" variant="secondary" onClick={() => setVisible((v) => v + VISIBLE_STEP)}>
+              Afficher plus
+            </Button>
+          ) : hasMore && onLoadMore ? (
+            <Button size="sm" variant="secondary" disabled={loadingMore} onClick={() => { onLoadMore(); setVisible((v) => v + VISIBLE_STEP); }}>
+              {loadingMore ? "Chargement…" : "Charger plus depuis l’historique"}
+            </Button>
+          ) : null}
+        </div>
+      )}
 
       {sortedTokens.length === 0 && (
         <div className="px-4 py-10 text-center text-sm text-muted-foreground">

@@ -65,18 +65,49 @@ export async function fetchSmartWalletAlerts(): Promise<
  * complet reste intégralement conservé en base — rien n'est supprimé.
  */
 export const RADAR_DISPLAY_LIMIT = 1000;
+/** Taille d'une page chargée depuis la base (pagination « Charger plus »). */
+export const TOKENS_PAGE_SIZE = 200;
 
-export async function fetchTokens(): Promise<TokenRow[]> {
+/**
+ * Colonnes légères pour la liste : les JSON lourds (facteurs de score/risque,
+ * holders exclus, coordination, métriques marché) ne sont chargés qu'à
+ * l'ouverture de la fiche détaillée via `fetchTokenDetail`.
+ */
+const TOKEN_LIST_COLUMNS =
+  "id, symbol, name, mint_address, market_cap, volume_24h, new_buyers, smart_wallet_count, score, status, liquidity_usd, price_usd, price_change_1h, volume_1h, market_source, last_enriched_at, is_simulated, launched_at, score_confidence, data_sufficient, holders_top10_share, alert_level, last_alert_at, risk_score, risk_level, risk_confidence, holders_top20_share, creator_address, creator_share, creator_previous_tokens, lp_status";
+
+export async function fetchTokensPage(offset: number, limit = TOKENS_PAGE_SIZE): Promise<TokenRow[]> {
   const { data, error } = await supabase
     .from("tokens")
-    .select("*")
+    .select(TOKEN_LIST_COLUMNS)
     .eq("is_simulated", false)
     // Classement : meilleur score d'abord, puis le token le plus récent.
     .order("score", { ascending: false })
     .order("launched_at", { ascending: false })
-    .limit(RADAR_DISPLAY_LIMIT);
+    .order("id", { ascending: true })
+    .range(offset, offset + limit - 1);
   if (error) throw error;
-  return (data ?? []) as unknown as TokenRow[];
+  return (data ?? []).map((row) => ({
+    ...(row as object),
+    score_factors: [],
+    market_metrics: null,
+    missing_metrics: null,
+    risk_factors: null,
+    holders_excluded: null,
+    coordination_flags: null,
+  })) as unknown as TokenRow[];
+}
+
+/** Compat : première page élargie (1000) pour les consommateurs existants. */
+export async function fetchTokens(): Promise<TokenRow[]> {
+  return fetchTokensPage(0, RADAR_DISPLAY_LIMIT);
+}
+
+/** Ligne complète d'un token (fiche détaillée). */
+export async function fetchTokenDetail(id: string): Promise<TokenRow | null> {
+  const { data, error } = await supabase.from("tokens").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return (data ?? null) as unknown as TokenRow | null;
 }
 
 /** Nombre total de tokens réels conservés en base (au-delà de l'affichage). */
@@ -90,12 +121,27 @@ export async function fetchTotalRealTokenCount(): Promise<number> {
 }
 
 
+/** Garde-fou d'affichage ; le compteur total reste exact via fetchSmartWalletCount. */
+export const SMART_WALLETS_LIMIT = 500;
+
+export async function fetchSmartWalletCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from("smart_wallets")
+    .select("id", { count: "exact", head: true })
+    .eq("is_simulated", false);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function fetchSmartWallets(): Promise<SmartWallet[]> {
   const { data, error } = await supabase
     .from("smart_wallets")
-    .select("*")
+    .select(
+      "id, address, label, win_rate, simulated_pnl, trade_count, last_active_at, smart_wallet_score, early_entries, tokens_tracked, success_count, success_rate, median_multiple, data_sufficient, reasons",
+    )
     .eq("is_simulated", false)
-    .order("smart_wallet_score", { ascending: false, nullsFirst: false });
+    .order("smart_wallet_score", { ascending: false, nullsFirst: false })
+    .limit(SMART_WALLETS_LIMIT);
   if (error) throw error;
   return (data ?? []) as unknown as SmartWallet[];
 }

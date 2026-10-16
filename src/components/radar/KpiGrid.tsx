@@ -31,12 +31,14 @@ export function KpiGrid({
   wallets,
   demoArchived = 0,
   totalTokens,
+  walletCount,
 }: {
   tokens: TokenRow[];
   alerts: AlertRow[];
   wallets: SmartWallet[];
   demoArchived?: number;
   totalTokens?: number;
+  walletCount?: number;
 }) {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
@@ -48,7 +50,7 @@ export function KpiGrid({
       <Kpi
         label="Tokens analysés"
         value={String(tokens.length)}
-        hint={`${totalTokens ?? tokens.length} conservés en base — 1000 affichés sur ${totalTokens ?? tokens.length} conservés`}
+        hint={`${tokens.length} chargés sur ${totalTokens ?? tokens.length} conservés en base`}
         icon={Radar}
       />
       <Kpi
@@ -65,7 +67,7 @@ export function KpiGrid({
       />
       <Kpi
         label="Wallets surveillés"
-        value={String(wallets.length)}
+        value={String(walletCount ?? wallets.length)}
         hint="Adresses réelles observées on-chain"
         icon={Wallet}
       />
