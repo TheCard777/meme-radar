@@ -87,7 +87,7 @@ export function LiveTradingPanel() {
             setRefusal(null);
             const r = await buy({ data: { mint: mint.trim() } });
             if (r.ok) toast.success("Ordre prêt — vérifiez puis validez sous 60 s");
-            else setRefusal({ title: r.error, reasons: r.reasons ?? [] });
+            else setRefusal({ title: r.error ?? "Erreur", reasons: r.reasons ?? [] });
           })}>Préparer l'ordre d'achat</Button>
         {refusal && (
           <div className="rounded-md border border-destructive/50 p-3 text-xs">
