@@ -36,7 +36,7 @@ export function LivePrepPanel() {
       <div>
         <h2 className="text-base font-semibold">Préparation du trading réel</h2>
         <p className="text-xs text-muted-foreground">
-          Lecture seule. Aucun ordre n'est signé ni envoyé : l'envoi réel n'existe pas encore dans l'app.
+          Lecture seule. Les ordres réels se gèrent dans « Trading réel » ci-dessous.
         </p>
       </div>
       <Button onClick={run} disabled={busy} size="sm">Vérifier Turnkey et le compte SMD</Button>
@@ -48,7 +48,7 @@ export function LivePrepPanel() {
           <Row ok={s.balanceSol !== null} label="Solde SMD"
             detail={s.balanceSol === null ? "Non disponible" : `${s.balanceSol.toFixed(4)} SOL${s.balanceUsd ? ` (~${s.balanceUsd.toFixed(2)} $)` : ""}`} />
           <Row ok={s.liveFlagSecret === "false"} label="LIVE_TRADING_ENABLED" detail={s.liveFlagSecret} />
-          <Row ok label="Envoi réel dans le code" detail="Désactivé" />
+          <Row ok label="Envoi réel dans le code" detail="Présent, bloqué par 3 verrous" />
         </ul>
       )}
       <div className="space-y-2 border-t border-border pt-3">

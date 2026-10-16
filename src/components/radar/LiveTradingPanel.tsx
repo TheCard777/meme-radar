@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
-  cancelLiveOrder, confirmLiveOrder, createLiveBuy, createLiveSell, getLiveOverview, setLiveArmed, setLiveKillSwitch,
+  cancelLiveOrder, confirmLiveOrder, createLiveBuy, createLiveSell, getLiveOverview, setLiveArmed, setLiveKillSwitch, testLiveSignature,
 } from "@/lib/live-trading.functions";
 
 const STATUS: Record<string, string> = {
@@ -28,6 +28,9 @@ export function LiveTradingPanel() {
   const cancel = useServerFn(cancelLiveOrder);
   const kill = useServerFn(setLiveKillSwitch);
   const arm = useServerFn(setLiveArmed);
+  const testSig = useServerFn(testLiveSignature);
+  const [refusal, setRefusal] = useState<{ title: string; reasons: string[] } | null>(null);
+  const [sigResult, setSigResult] = useState<{ ok: boolean; message: string } | null>(null);
   const q = useQuery({ queryKey: ["live-overview"], queryFn: () => overview(), refetchInterval: 5000, refetchIntervalInBackground: false });
   const [mint, setMint] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -81,9 +84,29 @@ export function LiveTradingPanel() {
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
         <Button size="sm" disabled={!!busy || mint.trim().length < 32 || g?.killSwitch}
           onClick={() => act("buy", async () => {
+            setRefusal(null);
             const r = await buy({ data: { mint: mint.trim() } });
-            if (r.ok) toast.success("Ordre prêt — vérifiez puis validez sous 60 s"); else toast.error(r.error);
+            if (r.ok) toast.success("Ordre prêt — vérifiez puis validez sous 60 s");
+            else setRefusal({ title: r.error ?? "Erreur", reasons: r.reasons ?? [] });
           })}>Préparer l'ordre d'achat</Button>
+        {refusal && (
+          <div className="rounded-md border border-destructive/50 p-3 text-xs">
+            <p className="font-medium text-destructive">{refusal.title}</p>
+            {refusal.reasons.length > 0 && (
+              <ul className="mt-1 space-y-0.5">{refusal.reasons.map((r) => <li key={r}>• {r}</li>)}</ul>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2 border-t border-border pt-3">
+        <p className="text-sm font-medium">Tester la signature Turnkey</p>
+        <p className="text-xs text-muted-foreground">
+          Fait signer un virement de 0 SOL du compte SMD vers lui-même, puis le simule. Jamais envoyé, aucun token requis.
+        </p>
+        <Button size="sm" variant="secondary" disabled={!!busy || g?.killSwitch}
+          onClick={() => act("sig", async () => { setSigResult(await testSig()); })}>Tester la signature (sans envoi)</Button>
+        {sigResult && <p className={`text-xs ${sigResult.ok ? "text-primary" : "text-destructive"}`}>{sigResult.message}</p>}
       </div>
 
       {d && d.orders.filter((o) => o.status === "pending").map((o) => (

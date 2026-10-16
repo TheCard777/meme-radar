@@ -54,15 +54,41 @@ function num(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/** Cache mémoire par mint (30 s) + pause globale après un 429 / 1015. */
+const CACHE_TTL_MS = 30_000;
+const MIN_COOLDOWN_MS = 60_000;
+const cache = new Map<string, { at: number; value: MarketMetrics | null }>();
+let cooldownUntil = 0;
+
+/** Secondes restantes avant de pouvoir réinterroger DEX Screener (0 = libre). */
+export function dexScreenerCooldownSeconds(): number {
+  return Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+}
+
 export async function fetchMarketMetrics(
   mints: string[],
 ): Promise<Map<string, MarketMetrics>> {
   const result = new Map<string, MarketMetrics>();
   if (mints.length === 0) return result;
 
-  const { isRetryableStatus, retryDelayMs } = await import("./enrich-queue");
-  const url = `${ENDPOINT}${mints.slice(0, MARKET_BATCH_SIZE).join(",")}`;
-  const MAX_ATTEMPTS = 3;
+  const now = Date.now();
+  const wanted = mints.slice(0, MARKET_BATCH_SIZE);
+  const missing = wanted.filter((m) => {
+    const c = cache.get(m);
+    if (c && now - c.at < CACHE_TTL_MS) {
+      if (c.value) result.set(m, c.value);
+      return false;
+    }
+    return true;
+  });
+  if (missing.length === 0) return result;
+  if (now < cooldownUntil) {
+    throw new Error(`DEX Screener limite les requêtes (429) — réessayez dans ${dexScreenerCooldownSeconds()} s`);
+  }
+
+  const { retryDelayMs } = await import("./enrich-queue");
+  const url = `${ENDPOINT}${missing.join(",")}`;
+  const MAX_ATTEMPTS = 2;
   let response: Response | null = null;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
     try {
@@ -72,7 +98,13 @@ export async function fetchMarketMetrics(
       await new Promise((r) => setTimeout(r, retryDelayMs(null, attempt)));
       continue;
     }
-    if (response.ok || !isRetryableStatus(response.status) || attempt === MAX_ATTEMPTS - 1) break;
+    // 429 / 1015 : on ne réessaie pas, on met tout en pause.
+    if (response.status === 429 || response.status === 403) {
+      const ra = Number.parseFloat(response.headers.get("retry-after") ?? "");
+      cooldownUntil = Date.now() + Math.max(MIN_COOLDOWN_MS, Number.isFinite(ra) ? ra * 1000 : 0);
+      throw new Error(`DEX Screener limite les requêtes (429) — réessayez dans ${dexScreenerCooldownSeconds()} s`);
+    }
+    if (response.ok || response.status < 500 || attempt === MAX_ATTEMPTS - 1) break;
     await new Promise((r) => setTimeout(r, retryDelayMs(response!.headers.get("retry-after"), attempt)));
   }
   if (!response || !response.ok) {
@@ -81,6 +113,9 @@ export async function fetchMarketMetrics(
     );
   }
   const payload = (await response.json()) as { pairs?: DexPair[] | null };
+  const fetchedAt = Date.now();
+  for (const m of missing) cache.set(m, { at: fetchedAt, value: null });
+  if (cache.size > 2000) for (const [k, v] of cache) if (fetchedAt - v.at > CACHE_TTL_MS) cache.delete(k);
 
   for (const pair of payload.pairs ?? []) {
     const address = pair.baseToken?.address;
@@ -108,6 +143,7 @@ export async function fetchMarketMetrics(
       pairUrl: pair.url ?? `https://dexscreener.com/solana/${address}`,
     });
   }
+  for (const m of missing) cache.set(m, { at: fetchedAt, value: result.get(m) ?? null });
 
   return result;
 }

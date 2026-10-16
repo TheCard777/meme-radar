@@ -154,8 +154,9 @@ export async function createBuyOrder(mint: string) {
   if (!view) throw new Error("Token inconnu du radar");
   const el = evaluateEligibility(view, LIVE_RULES);
   if (!el.eligible) {
-    const failed = el.checks.filter((c) => c.pass !== true).map((c) => `${c.label} (${c.detail})`);
-    throw new Error(`Token non éligible : ${failed.join(", ")}`);
+    const failed = el.checks.filter((c) => c.pass !== true).map((c) =>
+      `${c.pass === null ? "Donnée manquante" : "Refusé"} — ${c.label} : ${c.detail}`);
+    throw Object.assign(new Error(`Token non éligible :\n${failed.join("\n")}`), { reasons: failed });
   }
   const nowIso = new Date().toISOString();
   const cap = await capitalState(nowIso);
@@ -392,4 +393,50 @@ export async function liveOverview() {
     gates: g, orders: orders.data ?? [], positions: positions.data ?? [], checks, suggestions,
     dbError: orders.error?.message ?? positions.error?.message ?? null,
   };
+}
+
+/* ---------- Test de signature Turnkey (jamais envoyé) ---------- */
+const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function b58decode(str: string): Uint8Array {
+  let n = 0n;
+  for (const ch of str) {
+    const i = B58.indexOf(ch);
+    if (i < 0) throw new Error("Adresse base58 invalide");
+    n = n * 58n + BigInt(i);
+  }
+  const bytes: number[] = [];
+  while (n > 0n) { bytes.unshift(Number(n & 0xffn)); n >>= 8n; }
+  for (const ch of str) { if (ch !== "1") break; bytes.unshift(0); }
+  return Uint8Array.from(bytes);
+}
+const toB64 = (u: Uint8Array) => btoa(String.fromCharCode(...u));
+
+/**
+ * Construit un auto-virement de 0 lamport SMD → SMD, le fait signer par Turnkey
+ * puis le simule. N'appelle JAMAIS sendTransaction, indépendant des 3 verrous.
+ */
+export async function testTurnkeySignature() {
+  const g = await gates();
+  if (g.killSwitch) throw new Error("Arrêt d'urgence actif");
+  const me = b58decode(signer());
+  if (me.length !== 32) throw new Error("TURNKEY_SIGN_WITH invalide");
+  const { value } = await rpc<{ value: { blockhash: string } }>("getLatestBlockhash", [{ commitment: "confirmed" }]);
+  const system = new Uint8Array(32);
+  const data = new Uint8Array(12); data[0] = 2; // Transfer, 0 lamport
+  const msg = Uint8Array.from([
+    1, 0, 1, 2, ...me, ...system, ...b58decode(value.blockhash),
+    1, 1, 2, 0, 0, 12, ...data,
+  ]);
+  const unsigned = Uint8Array.from([1, ...new Uint8Array(64), ...msg]);
+  const signed = await turnkeySign(toB64(unsigned));
+  let simulation: string;
+  try {
+    const sim = await rpc<{ value: { err: unknown } }>("simulateTransaction", [
+      signed, { encoding: "base64", sigVerify: true, commitment: "processed" },
+    ]);
+    simulation = sim.value.err ? `refusée par le réseau (${JSON.stringify(sim.value.err)})` : "réussie";
+  } catch (e) {
+    simulation = `indisponible (${e instanceof Error ? e.message : "erreur"})`;
+  }
+  return { message: `Signature Turnkey acceptée par la policy. Simulation ${simulation}. Rien n'a été envoyé.` };
 }
