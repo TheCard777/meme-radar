@@ -54,7 +54,7 @@ function StrategyPage() {
     queryKey: ["paper-views", openMints],
     queryFn: () => getPaperMarketViews({ data: { openMints } }),
     enabled: ledger !== null,
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
     refetchIntervalInBackground: false,
     placeholderData: keepPreviousData,
   });
