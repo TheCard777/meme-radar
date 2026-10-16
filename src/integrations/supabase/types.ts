@@ -84,6 +84,8 @@ export type Database = {
           early_opportunity_solid_min_strength: number
           id: string
           last_scan_at: string | null
+          live_kill_switch: boolean
+          live_trading_armed: boolean
           risk_alert_cooldown_minutes: number
           risk_alert_min_confidence: number
           risk_alerts_enabled: boolean
@@ -116,6 +118,8 @@ export type Database = {
           early_opportunity_solid_min_strength?: number
           id?: string
           last_scan_at?: string | null
+          live_kill_switch?: boolean
+          live_trading_armed?: boolean
           risk_alert_cooldown_minutes?: number
           risk_alert_min_confidence?: number
           risk_alerts_enabled?: boolean
@@ -148,6 +152,8 @@ export type Database = {
           early_opportunity_solid_min_strength?: number
           id?: string
           last_scan_at?: string | null
+          live_kill_switch?: boolean
+          live_trading_armed?: boolean
           risk_alert_cooldown_minutes?: number
           risk_alert_min_confidence?: number
           risk_alerts_enabled?: boolean
@@ -856,6 +862,141 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      trade_orders: {
+        Row: {
+          created_at: string
+          error: string | null
+          exit_reason: string | null
+          expected_out_raw: string
+          expires_at: string
+          fee_lamports: number
+          id: string
+          in_amount_raw: string
+          liquidity_usd: number | null
+          min_out_raw: string
+          mint: string
+          out_decimals: number
+          position_id: string | null
+          price_impact_pct: number | null
+          price_usd: number | null
+          route: string | null
+          side: string
+          signature: string | null
+          slippage_bps: number
+          status: string
+          symbol: string | null
+          unsigned_tx: string
+          updated_at: string
+          usd_amount: number
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          exit_reason?: string | null
+          expected_out_raw: string
+          expires_at: string
+          fee_lamports?: number
+          id?: string
+          in_amount_raw: string
+          liquidity_usd?: number | null
+          min_out_raw: string
+          mint: string
+          out_decimals: number
+          position_id?: string | null
+          price_impact_pct?: number | null
+          price_usd?: number | null
+          route?: string | null
+          side: string
+          signature?: string | null
+          slippage_bps: number
+          status?: string
+          symbol?: string | null
+          unsigned_tx: string
+          updated_at?: string
+          usd_amount: number
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          exit_reason?: string | null
+          expected_out_raw?: string
+          expires_at?: string
+          fee_lamports?: number
+          id?: string
+          in_amount_raw?: string
+          liquidity_usd?: number | null
+          min_out_raw?: string
+          mint?: string
+          out_decimals?: number
+          position_id?: string | null
+          price_impact_pct?: number | null
+          price_usd?: number | null
+          route?: string | null
+          side?: string
+          signature?: string | null
+          slippage_bps?: number
+          status?: string
+          symbol?: string | null
+          unsigned_tx?: string
+          updated_at?: string
+          usd_amount?: number
+        }
+        Relationships: []
+      }
+      trade_positions: {
+        Row: {
+          buy_signature: string | null
+          closed_at: string | null
+          entry_liquidity_usd: number | null
+          entry_price_usd: number
+          exit_reason: string | null
+          id: string
+          mint: string
+          opened_at: string
+          realized_pnl_usd: number | null
+          sell_signature: string | null
+          stake_usd: number
+          status: string
+          symbol: string | null
+          token_amount_raw: string
+          token_decimals: number
+        }
+        Insert: {
+          buy_signature?: string | null
+          closed_at?: string | null
+          entry_liquidity_usd?: number | null
+          entry_price_usd: number
+          exit_reason?: string | null
+          id?: string
+          mint: string
+          opened_at?: string
+          realized_pnl_usd?: number | null
+          sell_signature?: string | null
+          stake_usd: number
+          status?: string
+          symbol?: string | null
+          token_amount_raw: string
+          token_decimals?: number
+        }
+        Update: {
+          buy_signature?: string | null
+          closed_at?: string | null
+          entry_liquidity_usd?: number | null
+          entry_price_usd?: number
+          exit_reason?: string | null
+          id?: string
+          mint?: string
+          opened_at?: string
+          realized_pnl_usd?: number | null
+          sell_signature?: string | null
+          stake_usd?: number
+          status?: string
+          symbol?: string | null
+          token_amount_raw?: string
+          token_decimals?: number
+        }
+        Relationships: []
       }
       wallet_token_entries: {
         Row: {
