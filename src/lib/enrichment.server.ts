@@ -34,6 +34,25 @@ import {
   RECENT_WINDOW_MS,
   splitBatch,
 } from "./enrich-queue";
+import { snapshotCutoff, SNAPSHOT_PURGE_BATCH } from "./retention";
+
+/**
+ * Supprime un lot d'anciens instantanés de prix (> 7 jours). Appelé une fois
+ * par cycle : la table se draine progressivement puis reste petite, sans
+ * jamais exécuter un gros DELETE bloquant. Renvoie le nombre de lignes supprimées.
+ */
+export async function purgeOldSnapshots(now = new Date()): Promise<number> {
+  const cutoff = snapshotCutoff(now);
+  const { data } = await supabaseAdmin
+    .from("token_snapshots")
+    .select("id")
+    .lt("captured_at", cutoff)
+    .limit(SNAPSHOT_PURGE_BATCH);
+  const ids = (data ?? []).map((r) => (r as { id: string }).id);
+  if (ids.length === 0) return 0;
+  await supabaseAdmin.from("token_snapshots").delete().in("id", ids);
+  return ids.length;
+}
 
 /** Délai minimal entre deux alertes pour un même token. */
 export const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
@@ -58,6 +77,8 @@ export interface EnrichmentResult {
   trackedAlertsCreated: number;
   /** Messages Telegram « token suivi » réellement envoyés. */
   trackedAlertsTelegramSent: number;
+  /** Anciens instantanés de prix supprimés pendant ce cycle (rétention 7 j). */
+  snapshotsPurged: number;
   errors: string[];
   tradingEnabled: false;
 }
@@ -214,9 +235,16 @@ export async function enrichRealTokens(limit = MARKET_BATCH_SIZE): Promise<Enric
     riskAlertsTelegramSent: 0,
     trackedAlertsCreated: 0,
     trackedAlertsTelegramSent: 0,
+    snapshotsPurged: 0,
     errors,
     tradingEnabled: false,
   };
+  // Rétention : purge non bloquante d'un lot d'anciens prix, même si aucun token à enrichir.
+  try {
+    result.snapshotsPurged = await purgeOldSnapshots();
+  } catch (purgeError) {
+    errors.push(purgeError instanceof Error ? purgeError.message : String(purgeError));
+  }
   if (tokens.length === 0) return result;
 
   let market: Map<string, MarketMetrics>;
