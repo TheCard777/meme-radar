@@ -76,4 +76,22 @@ describe("paper strategy V1", () => {
     expect(dailyStats(l, at(1)).circuitBreaker).toBe(true);
     expect(stepLedger(l, [view()], at(1)).opened).toHaveLength(0);
   });
+
+  it("prise de bénéfice +30 % et stop -20 % au dernier prix", () => {
+    const open = stepLedger(emptyLedger(), [view()], T0).ledger;
+    const tp = stepLedger(open, [view({ priceUsd: 1.3 })], at(2)).closed[0];
+    expect(tp?.exitReason).toBe("take_profit");
+    expect(tp?.realizedPnlUsd).toBeCloseTo(1.5);
+    const sl = stepLedger(open, [view({ priceUsd: 0.8 })], at(2)).closed[0];
+    expect(sl?.exitReason).toBe("stop_loss");
+    expect(sl?.realizedPnlUsd).toBeCloseTo(-1);
+  });
+
+  it("plafond engagé simultané 30 $ (6 positions de 5 $)", () => {
+    const l = emptyLedger();
+    for (let i = 0; i < 6; i++)
+      l.open.push({ id: `o${i}`, tokenId: `o${i}`, mint: `O${i}`, symbol: "O", stakeUsd: 5, entryPrice: 1,
+        entryLiquidityUsd: 30_000, openedAt: "2026-10-15T10:00:00.000Z", lastPrice: 1, lastPriceAt: T0 });
+    expect(entryBlocker(l, view(), T0)).toMatch(/30 \$/);
+  });
 });
