@@ -247,7 +247,9 @@ async function turnkeySign(unsignedB64: string): Promise<string> {
     throw new Error(
       s === "ACTIVITY_STATUS_CONSENSUS_NEEDED" || s === "ACTIVITY_STATUS_REJECTED"
         ? "Refusé par les règles de sécurité Turnkey"
-        : `Signature Turnkey échouée (${r.status})`,
+        : r.status === 403
+          ? "Turnkey refuse : aucune règle (policy) n'autorise encore cette signature"
+          : `Signature Turnkey échouée (${r.status})`,
     );
   }
   return hexToB64(signed);
