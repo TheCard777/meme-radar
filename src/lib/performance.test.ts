@@ -87,3 +87,20 @@ describe("aggregateWallet", () => {
     expect(wallet.reasons.join(" ")).toContain("inconnus");
   });
 });
+
+describe("cohorte 75-84 (profil signal)", () => {
+  it("compte les signaux à 76 et 82, ignore sous 75", () => {
+    const alert = (id: string, score: number) => ({
+      id, token_id: id, token_symbol: id, score, created_at: "2026-10-16T09:00:00.000Z", price_usd_at_alert: 1,
+    });
+    const snap = (id: string, price: number) => ({ token_id: id, captured_at: "2026-10-16T09:10:00.000Z", price_usd: price });
+    const outcomes = computeOutcomes(
+      [alert("a", 76), alert("b", 82), alert("c", 74)],
+      [snap("a", 1.5), snap("b", 0.6), snap("c", 2)],
+    );
+    expect(outcomes.map((o) => o.cohort)).toEqual(["75-84", "75-84"]);
+    const stats = summarizeCohort(outcomes, "75-84");
+    expect(stats.sample).toBe(2);
+    expect(stats.lossRate).toBe(0.5);
+  });
+});

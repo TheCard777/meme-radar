@@ -187,10 +187,13 @@ export async function fetchWalletEntries(): Promise<
   return data ?? [];
 }
 
-export async function fetchSnapshots(): Promise<SnapshotPoint[]> {
+/** Instantanés des seuls tokens alertés (la table en compte des centaines de milliers). */
+export async function fetchSnapshots(tokenIds: string[]): Promise<SnapshotPoint[]> {
+  if (tokenIds.length === 0) return [];
   const { data, error } = await supabase
     .from("token_snapshots")
     .select("token_id, captured_at, price_usd")
+    .in("token_id", tokenIds)
     .order("captured_at", { ascending: true })
     .limit(5000);
   if (error) throw error;

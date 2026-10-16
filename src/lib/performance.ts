@@ -27,11 +27,15 @@ export interface SnapshotPoint {
 export const HORIZONS_MIN = [5, 15, 60, 360, 1440] as const;
 export type HorizonMinutes = (typeof HORIZONS_MIN)[number];
 
+/** 75-84 couvre le profil signal (signaux gagnants du propriétaire à 76 et 82). */
+export const COHORTS = ["75-84", "85-89", "90-100"] as const;
+export type Cohort = (typeof COHORTS)[number];
+
 export interface SignalOutcome {
   alertId: string;
   symbol: string;
   score: number;
-  cohort: "85-89" | "90-100";
+  cohort: Cohort;
   /** Multiples par horizon (null = pas encore d'instantané exploitable). */
   horizons: Record<HorizonMinutes, number | null>;
   maxMultiple: number | null;
@@ -39,7 +43,7 @@ export interface SignalOutcome {
 }
 
 export interface CohortStats {
-  cohort: "85-89" | "90-100";
+  cohort: Cohort;
   sample: number;
   measured: number;
   medianMax: number | null;
@@ -78,8 +82,8 @@ export function computeOutcomes(
 
   const outcomes: SignalOutcome[] = [];
   for (const alert of alerts) {
-    if (alert.score < 85) continue;
-    const cohort: "85-89" | "90-100" = alert.score >= 90 ? "90-100" : "85-89";
+    if (alert.score < 75) continue;
+    const cohort: Cohort = alert.score >= 90 ? "90-100" : alert.score >= 85 ? "85-89" : "75-84";
     const base = alert.price_usd_at_alert;
     const series = alert.token_id ? (byToken.get(alert.token_id) ?? []) : [];
     const alertTime = new Date(alert.created_at).getTime();
@@ -122,7 +126,7 @@ export function computeOutcomes(
 
 export function summarizeCohort(
   outcomes: SignalOutcome[],
-  cohort: "85-89" | "90-100",
+  cohort: Cohort,
 ): CohortStats {
   const rows = outcomes.filter((o) => o.cohort === cohort);
   const measured = rows.filter((o) => o.maxMultiple !== null);

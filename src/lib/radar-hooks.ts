@@ -84,8 +84,12 @@ export const useDemoArchived = () =>
 export const useWalletEntries = () =>
   useQuery({ queryKey: ["wallet_entries"], queryFn: fetchWalletEntries });
 
-export const useSnapshots = () =>
-  useQuery({ queryKey: ["snapshots"], queryFn: fetchSnapshots });
+export const useSnapshots = (tokenIds: string[]) =>
+  useQuery({
+    queryKey: ["snapshots", tokenIds],
+    queryFn: () => fetchSnapshots(tokenIds),
+    enabled: tokenIds.length > 0,
+  });
 
 export const useAlerts = () => useQuery({ queryKey: ["alerts"], queryFn: fetchAlerts, ...live(15_000) });
 

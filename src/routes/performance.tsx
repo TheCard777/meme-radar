@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAlerts, useSnapshots } from "@/lib/radar-hooks";
 import {
   computeOutcomes,
+  COHORTS,
   summarizeCohort,
   HORIZONS_MIN,
   type AlertPoint,
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/performance")({
       {
         name: "description",
         content:
-          "Ce qui s’est réellement passé après chaque signal Meme Radar : cohortes 85-89 et 90-100, multiples médians, survie et pertes, sur données réelles uniquement.",
+          "Ce qui s’est réellement passé après chaque signal Meme Radar : cohortes 75-84, 85-89 et 90-100, multiples médians, survie et pertes, sur données réelles uniquement.",
       },
       { property: "og:title", content: "Performance des signaux — Meme Radar" },
       {
@@ -42,7 +43,11 @@ function fmtPct(value: number | null): string {
 
 function PerformancePage() {
   const alerts = useAlerts();
-  const snapshots = useSnapshots();
+  const tokenIds = useMemo(
+    () => [...new Set((alerts.data ?? []).map((a) => a.token_id).filter((id): id is string => !!id))].sort(),
+    [alerts.data],
+  );
+  const snapshots = useSnapshots(tokenIds);
 
   const outcomes = useMemo(() => {
     const points: AlertPoint[] = (alerts.data ?? []).map((a) => ({
@@ -57,11 +62,11 @@ function PerformancePage() {
   }, [alerts.data, snapshots.data]);
 
   const cohorts = useMemo(
-    () => [summarizeCohort(outcomes, "85-89"), summarizeCohort(outcomes, "90-100")],
+    () => COHORTS.map((c) => summarizeCohort(outcomes, c)),
     [outcomes],
   );
 
-  const loading = alerts.isLoading || snapshots.isLoading;
+  const loading = alerts.isLoading || (tokenIds.length > 0 && snapshots.isLoading);
 
   return (
     <AppShell
@@ -72,7 +77,7 @@ function PerformancePage() {
         <Skeleton className="h-96 w-full" />
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             {cohorts.map((cohort) => (
               <section key={cohort.cohort} className="panel p-4 sm:p-5">
                 <h2 className="text-base font-semibold">Cohorte {cohort.cohort}</h2>
