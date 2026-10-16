@@ -235,8 +235,9 @@ export function exitReasonFor(
   cfg: PaperConfig = PAPER_STRATEGY_V1,
 ): ExitReason | null {
   const change = p.lastPrice / p.entryPrice - 1;
-  if (change <= cfg.stopLossPct) return "stop_loss";
-  if (change >= cfg.takeProfitPct) return "take_profit";
+  const EPS = 1e-9; // un prix pile au seuil doit déclencher malgré les arrondis
+  if (change <= cfg.stopLossPct + EPS) return "stop_loss";
+  if (change >= cfg.takeProfitPct - EPS) return "take_profit";
   if (view && isNum(view.riskScore) && view.riskScore >= cfg.exitRiskScore) return "risk";
   if (
     view &&
