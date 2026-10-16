@@ -24,7 +24,7 @@ export const PAPER_STRATEGY_V1 = Object.freeze({
   maxPerTokenUsd: 15,
   maxEntriesPerDay: 3,
   maxDailyNewEntriesUsd: 15,
-  maxOpenExposureUsd: 60,
+  maxOpenExposureUsd: 30,
   stopLossPct: -0.2,
   takeProfitPct: 0.3,
   maxHoldMinutes: 60,
@@ -223,7 +223,7 @@ export function entryBlocker(
     return "Déjà acheté aujourd'hui (pas de réentrée)";
   if (stats.entries >= cfg.maxEntriesPerDay) return "3 achats simulés déjà faits aujourd'hui";
   if (stats.newEntriesUsd + cfg.stakeUsd > cfg.maxDailyNewEntriesUsd) return "Plafond journalier 15 $ atteint";
-  if (stats.openExposureUsd + cfg.stakeUsd > cfg.maxOpenExposureUsd) return "Budget engagé 60 $ atteint";
+  if (stats.openExposureUsd + cfg.stakeUsd > cfg.maxOpenExposureUsd) return `Budget engagé ${cfg.maxOpenExposureUsd} $ atteint`;
   if (cfg.stakeUsd > cfg.maxPerTokenUsd) return "Mise supérieure au plafond par token";
   return null;
 }
