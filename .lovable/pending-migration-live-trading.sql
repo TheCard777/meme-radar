@@ -1,2 +1,0 @@
--- À appliquer dès que la base répond : tables trade_orders / trade_positions + colonnes live_* de bot_settings.
--- (Contenu identique à la migration tentée le 2026-10-16, refusée car base injoignable.)
