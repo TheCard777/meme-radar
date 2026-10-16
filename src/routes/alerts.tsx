@@ -13,12 +13,12 @@ export const Route = createFileRoute("/alerts")({
       {
         name: "description",
         content:
-          "Historique des alertes de détection Meme Radar : niveau, score, canal et horodatage, en mode simulation.",
+          "Historique des alertes de détection Meme Radar : niveau, score, canal et horodatage, sur données réelles.",
       },
       { property: "og:title", content: "Historique des alertes — Meme Radar" },
       {
         property: "og:description",
-        content: "Toutes les alertes de scoring générées par le radar, en simulation.",
+        content: "Toutes les alertes de scoring générées par le radar sur données réelles.",
       },
     ],
   }),
@@ -37,7 +37,7 @@ function AlertsPage() {
   return (
     <AppShell
       title="Historique des alertes"
-      subtitle="Toutes les alertes générées par le scoring — simulation uniquement."
+      subtitle="Toutes les alertes générées par le scoring sur données réelles."
     >
       <div className="mb-6">
         <TrackedTokensPanel />

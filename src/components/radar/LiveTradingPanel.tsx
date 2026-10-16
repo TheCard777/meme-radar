@@ -116,7 +116,7 @@ export function LiveTradingPanel() {
           <ul className="space-y-1 text-xs">
             {[
               { label: "Policy / signature", ok: sigResult.result.signature.ok, detail: sigResult.result.signature.detail },
-              { label: "Simulation", ok: sigResult.result.simulation.ok, detail: sigResult.result.simulation.detail },
+              { label: "Vérification réseau", ok: sigResult.result.simulation.ok, detail: sigResult.result.simulation.detail },
               { label: "Virement externe (sonde)", ok: sigResult.result.externalTransfer.refused, detail: sigResult.result.externalTransfer.detail },
               { label: "Envoi", ok: true, detail: "Aucun : sendTransaction n'est jamais appelé par ce test" },
             ].map((r) => (

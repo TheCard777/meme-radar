@@ -9,7 +9,7 @@ const NAV = [
   { to: "/wallets", label: "Smart Wallets", icon: Wallet },
   { to: "/alerts", label: "Alertes", icon: Bell },
   { to: "/performance", label: "Performance", icon: LineChart },
-  { to: "/strategy", label: "Simulation", icon: FlaskConical },
+  { to: "/strategy", label: "Réel", icon: FlaskConical },
   { to: "/settings", label: "Paramètres", icon: Settings },
 ] as const;
 

@@ -8,7 +8,6 @@ import {
   ENTRY_RULE_LABELS,
   EXIT_REASON_LABELS,
   PAPER_STRATEGY_V1 as CFG,
-  REAL_TRADING_ENABLED,
   dailyStats,
   emptyLedger,
   entryBlocker,
@@ -21,14 +20,14 @@ import {
 export const Route = createFileRoute("/strategy")({
   head: () => ({
     meta: [
-      { title: "Stratégie simulée V1 — Meme Radar" },
+      { title: "Réel — tokens éligibles — Meme Radar" },
       {
         name: "description",
         content:
-          "Paper trading uniquement : éligibilité, positions simulées, PnL et limites de la stratégie V1. Aucun ordre réel.",
+          "Tokens réels éligibles à l'achat selon la stratégie V1, limites et suivi de la stratégie.",
       },
-      { property: "og:title", content: "Stratégie simulée V1 — Meme Radar" },
-      { property: "og:description", content: "Simulation de stratégie sans aucun ordre réel." },
+      { property: "og:title", content: "Réel — tokens éligibles — Meme Radar" },
+      { property: "og:description", content: "Tokens réels éligibles à l'achat selon la stratégie V1." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -72,10 +71,10 @@ function StrategyPage() {
   const stats = ledger ? dailyStats(ledger, now) : null;
 
   return (
-    <AppShell title="Stratégie V1 (simulation)" subtitle="Paper trading — aucun ordre réel n'est envoyé.">
+    <AppShell title="Réel — tokens éligibles" subtitle="Copiez un token « Éligible » puis achetez-le dans Paramètres → Trading réel.">
       <div className="space-y-6">
         <section className="panel border-warning p-4 text-sm">
-          <p className="font-semibold">SIMULATION UNIQUEMENT — mode réel : {REAL_TRADING_ENABLED ? "activé" : "désactivé (verrouillé dans le code)"}</p>
+          <p className="font-semibold">Les achats et ventes réels se font dans Paramètres → Trading réel. Les positions ci-dessous sont un suivi théorique de la stratégie.</p>
           <p className="mt-1 text-muted-foreground">
             Aucun wallet, aucune clé, aucune transaction. Les positions vivent uniquement dans ce navigateur
             et ne progressent que lorsque cette page est ouverte (rafraîchie toutes les 30 s). Le coupe-circuit
@@ -99,7 +98,7 @@ function StrategyPage() {
         )}
 
         <section className="panel p-4">
-          <h2 className="mb-3 text-base font-semibold">Positions simulées ouvertes</h2>
+          <h2 className="mb-3 text-base font-semibold">Positions théoriques de la stratégie (pas vos achats)</h2>
           {!ledger?.open.length ? (
             <p className="text-sm text-muted-foreground">Aucune.</p>
           ) : (
@@ -152,7 +151,7 @@ function StrategyPage() {
 
         <section className="panel p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold">Historique simulé</h2>
+            <h2 className="text-base font-semibold">Historique théorique de la stratégie</h2>
             <Button
               variant="outline"
               size="sm"

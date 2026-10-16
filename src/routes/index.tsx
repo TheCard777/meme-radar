@@ -28,12 +28,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Dashboard privé de détection et de simulation de memecoins Solana : scoring, smart wallets et alertes. Aucun trading automatique.",
+          "Dashboard privé de détection et de trading de memecoins Solana : scoring, smart wallets et alertes.",
       },
       { property: "og:title", content: "Meme Radar — Détection de memecoins Solana" },
       {
         property: "og:description",
-        content: "Scoring des nouveaux memecoins Solana, smart wallets et alertes en simulation.",
+        content: "Scoring des nouveaux memecoins Solana, smart wallets et alertes en temps réel.",
       },
       {
         property: "og:image",
