@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as StrategyRouteImport } from './routes/strategy'
 import { Route as WalletsRouteImport } from './routes/wallets'
 import { Route as ApiPublicCollectorHealthRouteImport } from './routes/api/public/collector-health'
 import { Route as ApiPublicEnrichRouteImport } from './routes/api/public/enrich'
@@ -38,6 +39,11 @@ const PerformanceRoute = PerformanceRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StrategyRoute = StrategyRouteImport.update({
+  id: '/strategy',
+  path: '/strategy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WalletsRoute = WalletsRouteImport.update({
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/alerts': typeof AlertsRoute
   '/performance': typeof PerformanceRoute
   '/settings': typeof SettingsRoute
+  '/strategy': typeof StrategyRoute
   '/wallets': typeof WalletsRoute
   '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
   '/api/public/enrich': typeof ApiPublicEnrichRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/alerts': typeof AlertsRoute
   '/performance': typeof PerformanceRoute
   '/settings': typeof SettingsRoute
+  '/strategy': typeof StrategyRoute
   '/wallets': typeof WalletsRoute
   '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
   '/api/public/enrich': typeof ApiPublicEnrichRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/alerts': typeof AlertsRoute
   '/performance': typeof PerformanceRoute
   '/settings': typeof SettingsRoute
+  '/strategy': typeof StrategyRoute
   '/wallets': typeof WalletsRoute
   '/api/public/collector-health': typeof ApiPublicCollectorHealthRoute
   '/api/public/enrich': typeof ApiPublicEnrichRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/performance'
     | '/settings'
+    | '/strategy'
     | '/wallets'
     | '/api/public/collector-health'
     | '/api/public/enrich'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/performance'
     | '/settings'
+    | '/strategy'
     | '/wallets'
     | '/api/public/collector-health'
     | '/api/public/enrich'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/alerts'
     | '/performance'
     | '/settings'
+    | '/strategy'
     | '/wallets'
     | '/api/public/collector-health'
     | '/api/public/enrich'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   AlertsRoute: typeof AlertsRoute
   PerformanceRoute: typeof PerformanceRoute
   SettingsRoute: typeof SettingsRoute
+  StrategyRoute: typeof StrategyRoute
   WalletsRoute: typeof WalletsRoute
   ApiPublicCollectorHealthRoute: typeof ApiPublicCollectorHealthRoute
   ApiPublicEnrichRoute: typeof ApiPublicEnrichRoute
@@ -190,6 +203,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/strategy': {
+      id: '/strategy'
+      path: '/strategy'
+      fullPath: '/strategy'
+      preLoaderRoute: typeof StrategyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wallets': {
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   AlertsRoute: AlertsRoute,
   PerformanceRoute: PerformanceRoute,
   SettingsRoute: SettingsRoute,
+  StrategyRoute: StrategyRoute,
   WalletsRoute: WalletsRoute,
   ApiPublicCollectorHealthRoute: ApiPublicCollectorHealthRoute,
   ApiPublicEnrichRoute: ApiPublicEnrichRoute,
