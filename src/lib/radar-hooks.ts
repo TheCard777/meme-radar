@@ -1,4 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
@@ -7,7 +13,10 @@ import {
   fetchDemoArchivedCount,
   fetchSmartWalletAlerts,
   fetchSmartWallets,
-  fetchTokens,
+  fetchTokenDetail,
+  fetchTokensPage,
+  fetchSmartWalletCount,
+  TOKENS_PAGE_SIZE,
   fetchTotalRealTokenCount,
   fetchWalletEntries,
   fetchWalletTrades,
@@ -32,8 +41,33 @@ const live = (ms: number) => ({
   placeholderData: keepPreviousData,
 });
 
-export const useTokens = () =>
-  useQuery({ queryKey: ["tokens"], queryFn: fetchTokens, ...live(15_000) });
+/**
+ * Tokens paginés (200 par page, « Charger plus »). Le rafraîchissement 15 s
+ * ne recharge que les pages déjà ouvertes ; rien n'est supprimé en base.
+ */
+export function useTokens() {
+  const q = useInfiniteQuery({
+    queryKey: ["tokens", "pages"],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => fetchTokensPage(pageParam),
+    getNextPageParam: (last, all) =>
+      last.length < TOKENS_PAGE_SIZE ? undefined : all.length * TOKENS_PAGE_SIZE,
+    ...live(15_000),
+  });
+  const data = q.data ? q.data.pages.flat() : undefined;
+  return { ...q, data };
+}
+
+export const useTokenDetail = (id: string | null) =>
+  useQuery({
+    queryKey: ["tokens", "detail", id],
+    queryFn: () => fetchTokenDetail(id as string),
+    enabled: id !== null,
+    staleTime: 10_000,
+  });
+
+export const useSmartWalletCount = () =>
+  useQuery({ queryKey: ["smart_wallets", "count"], queryFn: fetchSmartWalletCount, ...live(30_000) });
 
 export const useTotalRealTokenCount = () =>
   useQuery({ queryKey: ["tokens", "total_real_count"], queryFn: fetchTotalRealTokenCount, ...live(30_000) });
