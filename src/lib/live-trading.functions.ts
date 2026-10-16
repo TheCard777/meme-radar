@@ -20,7 +20,10 @@ export const createLiveBuy = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const s = await guard();
     try { return { ok: true as const, id: await s.createBuyOrder(data.mint) }; }
-    catch (e) { return { ok: false as const, error: e instanceof Error ? e.message : "Erreur" }; }
+    catch (e) {
+      const reasons = (e as { reasons?: string[] }).reasons ?? null;
+      return { ok: false as const, error: e instanceof Error ? e.message.split("\n")[0] : "Erreur", reasons };
+    }
   });
 
 export const createLiveSell = createServerFn({ method: "POST" })
@@ -49,3 +52,8 @@ export const setLiveArmed = createServerFn({ method: "POST" })
     try { await (await guard()).setArmed(data.on); return { ok: true as const }; }
     catch (e) { return { ok: false as const, error: e instanceof Error ? e.message : "Erreur" }; }
   });
+
+export const testLiveSignature = createServerFn({ method: "POST" }).handler(async () => {
+  try { return { ok: true as const, message: (await (await guard()).testTurnkeySignature()).message }; }
+  catch (e) { return { ok: false as const, message: e instanceof Error ? e.message : "Erreur" }; }
+});
