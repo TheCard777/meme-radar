@@ -26,14 +26,7 @@ import { summarizeRisk } from "./risk-scoring";
 import { readRiskAlertConfig, type RiskAlertConfig } from "./risk-alerts";
 import { processRiskAlert } from "./risk-alerts.server";
 import { evaluateTrackedToken, loadEnabledTrackedTokens } from "./token-tracking.server";
-import {
-  FOLLOW_UP_EVERY_MS,
-  FOLLOW_UP_QUOTA,
-  FOLLOW_UP_WINDOW_MS,
-  nextEnrichAfterMiss,
-  RECENT_WINDOW_MS,
-  splitBatch,
-} from "./enrich-queue";
+import { nextEnrichAfterMiss, RECENT_WINDOW_MS, splitBatch } from "./enrich-queue";
 import { snapshotCutoff, SNAPSHOT_PURGE_BATCH } from "./retention";
 
 /**
@@ -160,9 +153,8 @@ const TOKEN_COLUMNS =
   "id, symbol, name, mint_address, launched_at, smart_wallet_count, alert_level, last_alert_at, creator_address, creator_previous_tokens, coordination_flags, market_miss_count";
 
 /**
- * File d'attente : d'abord le suivi des tokens alertés (voir FOLLOW_UP_*), puis
- * les tokens récents (< 2 h) dus, jamais enrichis en premier puis les plus
- * récents ; ensuite les anciens dus pour compléter.
+ * File d'attente : d'abord les tokens récents (< 2 h) dus, jamais enrichis en
+ * premier puis les plus récents ; ensuite les anciens dus pour compléter.
  * Les tokens sans marché en backoff (`next_enrich_at` futur) sont ignorés.
  */
 async function selectTokensToEnrich(limit: number, now: Date): Promise<TokenRecord[]> {
@@ -170,20 +162,7 @@ async function selectTokensToEnrich(limit: number, now: Date): Promise<TokenReco
   const nowIso = now.toISOString();
   const recentCutoff = new Date(now.getTime() - RECENT_WINDOW_MS).toISOString();
   const due = `next_enrich_at.is.null,next_enrich_at.lte.${nowIso}`;
-
-  const followRes = await supabaseAdmin
-    .from("tokens")
-    .select(TOKEN_COLUMNS)
-    .eq("is_simulated", false)
-    .gte("last_alert_at", new Date(now.getTime() - FOLLOW_UP_WINDOW_MS).toISOString())
-    .lte("last_enriched_at", new Date(now.getTime() - FOLLOW_UP_EVERY_MS).toISOString())
-    .or(due)
-    .order("last_enriched_at", { ascending: true })
-    .limit(Math.min(FOLLOW_UP_QUOTA, batch));
-  if (followRes.error) throw new Error(followRes.error.message);
-  const followUp = (followRes.data ?? []) as unknown as TokenRecord[];
-  const seen = new Set(followUp.map((t) => t.id));
-  const { recent: recentQuota } = splitBatch(batch - followUp.length);
+  const { recent: recentQuota } = splitBatch(batch);
 
   const recentRes = await supabaseAdmin
     .from("tokens")
@@ -195,10 +174,7 @@ async function selectTokensToEnrich(limit: number, now: Date): Promise<TokenReco
     .order("launched_at", { ascending: false })
     .limit(recentQuota);
   if (recentRes.error) throw new Error(recentRes.error.message);
-  const recent = [
-    ...followUp,
-    ...((recentRes.data ?? []) as unknown as TokenRecord[]).filter((t) => !seen.has(t.id)),
-  ];
+  const recent = (recentRes.data ?? []) as unknown as TokenRecord[];
 
   const remaining = batch - recent.length;
   if (remaining <= 0) return recent;
