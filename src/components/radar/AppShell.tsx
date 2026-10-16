@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Bell, LineChart, Radar, Settings, Wallet } from "lucide-react";
+import { Bell, FlaskConical, LineChart, Radar, Settings, Wallet } from "lucide-react";
 
 import logoAsset from "@/assets/meme-radar-logo-v2.png.asset.json";
 
@@ -9,6 +9,7 @@ const NAV = [
   { to: "/wallets", label: "Smart Wallets", icon: Wallet },
   { to: "/alerts", label: "Alertes", icon: Bell },
   { to: "/performance", label: "Performance", icon: LineChart },
+  { to: "/strategy", label: "Simulation", icon: FlaskConical },
   { to: "/settings", label: "Paramètres", icon: Settings },
 ] as const;
 
