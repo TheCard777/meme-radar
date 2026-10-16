@@ -30,7 +30,7 @@ export function LiveTradingPanel() {
   const arm = useServerFn(setLiveArmed);
   const testSig = useServerFn(testLiveSignature);
   const [refusal, setRefusal] = useState<{ title: string; reasons: string[] } | null>(null);
-  const [sigResult, setSigResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [sigResult, setSigResult] = useState<Awaited<ReturnType<typeof testSig>> | null>(null);
   const q = useQuery({ queryKey: ["live-overview"], queryFn: () => overview(), refetchInterval: 5000, refetchIntervalInBackground: false });
   const [mint, setMint] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -55,7 +55,11 @@ export function LiveTradingPanel() {
         </p>
       </div>
 
-      {q.isError && <p className="text-sm text-destructive">Impossible de charger l'état (base de données injoignable ?).</p>}
+      {q.isError && (
+        <p className="text-sm text-destructive">
+          {q.error instanceof Error && q.error.message ? q.error.message : "Impossible de charger l'état (base de données injoignable ?)."}
+        </p>
+      )}
       {d?.dbError && <p className="text-sm text-destructive">{d.dbError}</p>}
 
       {g && (
@@ -102,11 +106,27 @@ export function LiveTradingPanel() {
       <div className="space-y-2 border-t border-border pt-3">
         <p className="text-sm font-medium">Tester la signature Turnkey</p>
         <p className="text-xs text-muted-foreground">
-          Fait signer un virement de 0 SOL du compte SMD vers lui-même, puis le simule. Jamais envoyé, aucun token requis.
+          Fait signer un virement de 0 SOL du compte SMD vers lui-même puis le simule, et vérifie que la policy refuse un
+          virement vers une autre adresse. Rien n'est jamais envoyé, aucun SOL requis.
         </p>
         <Button size="sm" variant="secondary" disabled={!!busy || g?.killSwitch}
           onClick={() => act("sig", async () => { setSigResult(await testSig()); })}>Tester la signature (sans envoi)</Button>
-        {sigResult && <p className={`text-xs ${sigResult.ok ? "text-primary" : "text-destructive"}`}>{sigResult.message}</p>}
+        {sigResult && !sigResult.ok && <p className="text-xs text-destructive">{sigResult.message}</p>}
+        {sigResult?.ok && (
+          <ul className="space-y-1 text-xs">
+            {[
+              { label: "Policy / signature", ok: sigResult.result.signature.ok, detail: sigResult.result.signature.detail },
+              { label: "Simulation", ok: sigResult.result.simulation.ok, detail: sigResult.result.simulation.detail },
+              { label: "Virement externe (sonde)", ok: sigResult.result.externalTransfer.refused, detail: sigResult.result.externalTransfer.detail },
+              { label: "Envoi", ok: true, detail: "Aucun : sendTransaction n'est jamais appelé par ce test" },
+            ].map((r) => (
+              <li key={r.label} className="flex justify-between gap-3">
+                <span className="shrink-0">{r.ok ? "✓" : r.ok === false ? "✗" : "?"} {r.label}</span>
+                <span className={`text-right ${r.ok ? "text-primary" : r.ok === false ? "text-destructive" : "text-muted-foreground"}`}>{r.detail}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {d && d.orders.filter((o) => o.status === "pending").map((o) => (

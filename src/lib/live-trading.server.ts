@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { allPass, liveBuyBlocker, LIVE_RULES, preflight, sendBlocker, type PreflightCheck } from "./live-orders";
 import { evaluateEligibility, isPostMigrationDex, type MarketView } from "./paper-strategy";
+import { INCINERATOR, toB64, zeroTransferTx } from "./solana-test-tx";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 const JUP = "https://lite-api.jup.ag";
@@ -245,12 +246,16 @@ async function turnkeySign(unsignedB64: string): Promise<string> {
   const signed = j.activity?.result?.signTransactionResult?.signedTransaction;
   if (!r.ok || !signed) {
     const s = j.activity?.status;
-    throw new Error(
-      s === "ACTIVITY_STATUS_CONSENSUS_NEEDED" || s === "ACTIVITY_STATUS_REJECTED"
-        ? "Refusé par les règles de sécurité Turnkey"
-        : r.status === 403
-          ? "Turnkey refuse : aucune règle (policy) n'autorise encore cette signature"
-          : `Signature Turnkey échouée (${r.status})`,
+    const byRules = s === "ACTIVITY_STATUS_CONSENSUS_NEEDED" || s === "ACTIVITY_STATUS_REJECTED";
+    throw Object.assign(
+      new Error(
+        byRules
+          ? "Refusé par les règles de sécurité Turnkey"
+          : r.status === 403
+            ? "Turnkey refuse : aucune règle (policy) n'autorise encore cette signature"
+            : `Signature Turnkey échouée (${r.status})`,
+      ),
+      { policyDenied: byRules || r.status === 403 },
     );
   }
   return hexToB64(signed);
@@ -396,47 +401,69 @@ export async function liveOverview() {
 }
 
 /* ---------- Test de signature Turnkey (jamais envoyé) ---------- */
-const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-function b58decode(str: string): Uint8Array {
-  let n = 0n;
-  for (const ch of str) {
-    const i = B58.indexOf(ch);
-    if (i < 0) throw new Error("Adresse base58 invalide");
-    n = n * 58n + BigInt(i);
-  }
-  const bytes: number[] = [];
-  while (n > 0n) { bytes.unshift(Number(n & 0xffn)); n >>= 8n; }
-  for (const ch of str) { if (ch !== "1") break; bytes.unshift(0); }
-  return Uint8Array.from(bytes);
-}
-const toB64 = (u: Uint8Array) => btoa(String.fromCharCode(...u));
 
-/**
- * Construit un auto-virement de 0 lamport SMD → SMD, le fait signer par Turnkey
- * puis le simule. N'appelle JAMAIS sendTransaction, indépendant des 3 verrous.
- */
-export async function testTurnkeySignature() {
-  const g = await gates();
-  if (g.killSwitch) throw new Error("Arrêt d'urgence actif");
-  const me = b58decode(signer());
-  if (me.length !== 32) throw new Error("TURNKEY_SIGN_WITH invalide");
-  const { value } = await rpc<{ value: { blockhash: string } }>("getLatestBlockhash", [{ commitment: "confirmed" }]);
-  const system = new Uint8Array(32);
-  const data = new Uint8Array(12); data[0] = 2; // Transfer, 0 lamport
-  const msg = Uint8Array.from([
-    1, 0, 1, 2, ...me, ...system, ...b58decode(value.blockhash),
-    1, 1, 2, 0, 0, 12, ...data,
-  ]);
-  const unsigned = Uint8Array.from([1, ...new Uint8Array(64), ...msg]);
-  const signed = await turnkeySign(toB64(unsigned));
-  let simulation: string;
+export interface SignatureTest {
+  /** La policy a-t-elle accepté de signer l'auto-virement 0 SOL ? */
+  signature: { ok: boolean; detail: string };
+  /** null = non concluante : non lancée, ou compte SMD non financé (échec attendu). */
+  simulation: { ok: boolean | null; detail: string };
+  /** Sonde : virement 0 SOL vers une autre adresse. refused=true est le résultat sûr. */
+  externalTransfer: { refused: boolean | null; detail: string };
+}
+
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : "erreur");
+
+async function simulateSigned(signed: string): Promise<SignatureTest["simulation"]> {
   try {
+    // sigVerify : le RPC rejette en erreur JSON-RPC une signature invalide, avant toute simulation.
     const sim = await rpc<{ value: { err: unknown } }>("simulateTransaction", [
       signed, { encoding: "base64", sigVerify: true, commitment: "processed" },
     ]);
-    simulation = sim.value.err ? `refusée par le réseau (${JSON.stringify(sim.value.err)})` : "réussie";
+    const err = sim.value.err;
+    if (!err) return { ok: true, detail: "Réussie" };
+    const raw = JSON.stringify(err);
+    if (err === "AccountNotFound" || raw.includes("InsufficientFundsForFee"))
+      return { ok: null, detail: `Signature vérifiée par le réseau ; échec attendu : compte SMD non financé (${raw})` };
+    return { ok: false, detail: `Refusée par le réseau : ${raw}` };
   } catch (e) {
-    simulation = `indisponible (${e instanceof Error ? e.message : "erreur"})`;
+    return { ok: false, detail: `Indisponible : ${errMsg(e)}` };
   }
-  return { message: `Signature Turnkey acceptée par la policy. Simulation ${simulation}. Rien n'a été envoyé.` };
+}
+
+/**
+ * 1. Auto-virement 0 SOL SMD → SMD : signé par Turnkey puis simulé.
+ * 2. Sonde : virement 0 SOL SMD → adresse externe, signé puis jeté (ni simulé ni envoyé),
+ *    pour savoir si la policy laisse signer des virements arbitraires.
+ * N'appelle JAMAIS sendTransaction, indépendant des 3 verrous.
+ */
+export async function testTurnkeySignature(): Promise<SignatureTest> {
+  const g = await gates();
+  if (g.killSwitch) throw new Error("Arrêt d'urgence actif");
+  const me = signer();
+  if (!me) throw new Error("TURNKEY_SIGN_WITH manquant");
+  const { value } = await rpc<{ value: { blockhash: string } }>("getLatestBlockhash", [{ commitment: "confirmed" }]);
+
+  let signature: SignatureTest["signature"];
+  let simulation: SignatureTest["simulation"] = { ok: null, detail: "Non lancée (aucune signature)" };
+  try {
+    const signed = await turnkeySign(toB64(zeroTransferTx(me, me, value.blockhash)));
+    signature = { ok: true, detail: "Acceptée par la policy, signature produite" };
+    simulation = await simulateSigned(signed);
+  } catch (e) {
+    signature = { ok: false, detail: errMsg(e) };
+  }
+
+  let externalTransfer: SignatureTest["externalTransfer"];
+  try {
+    await turnkeySign(toB64(zeroTransferTx(me, INCINERATOR, value.blockhash)));
+    externalTransfer = {
+      refused: false,
+      detail: "Signée : la policy autorise un virement vers une autre adresse. Si la clé API fuit, le compte SMD peut être vidé. Restreindre la policy avant de le financer.",
+    };
+  } catch (e) {
+    externalTransfer = (e as { policyDenied?: boolean }).policyDenied
+      ? { refused: true, detail: "Refusée par la policy : les virements vers d'autres adresses sont bloqués" }
+      : { refused: null, detail: `Indéterminé : ${errMsg(e)}` };
+  }
+  return { signature, simulation, externalTransfer };
 }

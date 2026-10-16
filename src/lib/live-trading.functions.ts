@@ -2,7 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 const guard = async () => {
-  const { requireSettingsUnlocked } = await import("./settings-gate.server");
+  const { isGateConfigured, requireSettingsUnlocked } = await import("./settings-gate.server");
+  // Fail-closed : sans mot de passe, requireSettingsUnlocked laisse passer tout visiteur de l'app publique.
+  if (!isGateConfigured())
+    throw new Error("Trading réel bloqué : ajoutez le secret SETTINGS_PASSWORD pour protéger les Paramètres.");
   await requireSettingsUnlocked();
   return import("./live-trading.server");
 };
@@ -54,6 +57,6 @@ export const setLiveArmed = createServerFn({ method: "POST" })
   });
 
 export const testLiveSignature = createServerFn({ method: "POST" }).handler(async () => {
-  try { return { ok: true as const, message: (await (await guard()).testTurnkeySignature()).message }; }
+  try { return { ok: true as const, result: await (await guard()).testTurnkeySignature() }; }
   catch (e) { return { ok: false as const, message: e instanceof Error ? e.message : "Erreur" }; }
 });
