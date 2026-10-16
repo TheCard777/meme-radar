@@ -42,7 +42,7 @@ const live = (ms: number) => ({
 });
 
 /**
- * Tokens paginés (200 par page, « Charger plus »). Le rafraîchissement 5 s
+ * Tokens paginés (200 par page, « Charger plus »). Le rafraîchissement 12 s
  * ne recharge que les pages déjà ouvertes ; rien n'est supprimé en base.
  */
 export function useTokens() {
@@ -52,7 +52,7 @@ export function useTokens() {
     queryFn: ({ pageParam }) => fetchTokensPage(pageParam),
     getNextPageParam: (last, all) =>
       last.length < TOKENS_PAGE_SIZE ? undefined : all.length * TOKENS_PAGE_SIZE,
-    ...live(5_000),
+    ...live(12_000),
   });
   const data = q.data ? q.data.pages.flat() : undefined;
   return { ...q, data };
@@ -91,7 +91,7 @@ export const useSnapshots = (tokenIds: string[]) =>
     enabled: tokenIds.length > 0,
   });
 
-export const useAlerts = () => useQuery({ queryKey: ["alerts"], queryFn: fetchAlerts, ...live(5_000) });
+export const useAlerts = () => useQuery({ queryKey: ["alerts"], queryFn: fetchAlerts, ...live(12_000) });
 
 export const useSmartWalletAlerts = () =>
   useQuery({ queryKey: ["smart_wallet_alerts"], queryFn: fetchSmartWalletAlerts });
