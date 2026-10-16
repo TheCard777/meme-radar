@@ -15,7 +15,10 @@ export const PAPER_STRATEGY_V1 = Object.freeze({
   maxAgeMinutes: 120,
   minOpportunityScore: 80,
   maxRiskScore: 30, // strictement inférieur
-  minConfidence: 0.8, // pour les deux scores
+  // Confiance = part des facteurs réellement mesurés. 80 % n'était jamais atteint (max observé :
+  // 70 % score, 40 % risque) ; abaissé sur décision du propriétaire, chaque achat restant validé à la main.
+  minScoreConfidence: 0.7,
+  minRiskConfidence: 0.4,
   minLiquidityUsd: 20_000,
   minVolume1hUsd: 5_000,
   minAcceleration: 1.5,
@@ -112,12 +115,12 @@ export function evaluateEligibility(view: MarketView, cfg: PaperConfig = PAPER_S
       (v) => v >= cfg.minAgeMinutes && v <= cfg.maxAgeMinutes, (v) => `${Math.round(v)} min`),
     check("score", `Score opportunité ≥ ${cfg.minOpportunityScore}`, view.opportunityScore,
       (v) => v >= cfg.minOpportunityScore, (v) => String(Math.round(v))),
-    check("score_conf", `Confiance score ≥ ${pct(cfg.minConfidence)}`, view.opportunityConfidence,
-      (v) => v >= cfg.minConfidence, pct),
+    check("score_conf", `Confiance score ≥ ${pct(cfg.minScoreConfidence)}`, view.opportunityConfidence,
+      (v) => v >= cfg.minScoreConfidence, pct),
     check("risk", `Risque < ${cfg.maxRiskScore}`, view.riskScore,
       (v) => v < cfg.maxRiskScore, (v) => String(Math.round(v))),
-    check("risk_conf", `Confiance risque ≥ ${pct(cfg.minConfidence)}`, view.riskConfidence,
-      (v) => v >= cfg.minConfidence, pct),
+    check("risk_conf", `Confiance risque ≥ ${pct(cfg.minRiskConfidence)}`, view.riskConfidence,
+      (v) => v >= cfg.minRiskConfidence, pct),
     check("liquidity", `Liquidité ≥ ${usd(cfg.minLiquidityUsd)}`, view.liquidityUsd,
       (v) => v >= cfg.minLiquidityUsd, usd),
     check("volume", `Volume 1h ≥ ${usd(cfg.minVolume1hUsd)}`, view.volume1h,
