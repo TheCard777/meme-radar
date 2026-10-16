@@ -37,7 +37,8 @@ Les noms de champs exacts du JSON peuvent varier selon la version de Turnkey. Si
 5. Premier vrai envoi uniquement sur votre validation explicite.
 
 ## Limites confirmées pour le trading réel
-- Capital engagé en même temps : **15 USD maximum** (au lieu de 60). La simulation et la mémoire du projet seront alignées à l'étape de code, sur votre accord.
-- Inchangé : 5 USD par position, 15 USD par token, 3 achats et 15 USD de nouvelles entrées par jour, perte journalière maximale de -15 USD, mêmes règles d'entrée et de sortie.
-- **Compatibilité** : 5 USD par position avec 15 USD au total, cela fait au plus 3 positions ouvertes en même temps. C'est cohérent avec les 3 achats par jour. Comme on ne renforce jamais une position, le plafond de 15 USD par token ne sera jamais atteint.
-- **Le stop de -15 USD n'est pas une garantie** : c'est une règle du logiciel. En cas de chute brutale, de liquidité retirée (rug), de glissement de prix ou de frais, la vente peut se faire bien plus bas que prévu. Un token peut même devenir invendable. La vraie limite, c'est le montant laissé sur le compte SMD : n'y mettez pas plus de 15 USD, plus un peu de SOL pour les frais.
+- **Capital engagé simultanément : 30 USD maximum** (option B). C'est le total des positions ouvertes au même moment, pas un budget d'achats. Le code et la mémoire du projet ne sont pas modifiés à cette étape.
+- **Budget de nouvelles entrées par jour : 15 USD, inchangé.** 30 USD engagés ne veut donc pas dire 30 USD d'achats par jour. Ce plafond ne peut être atteint qu'avec des positions encore ouvertes d'un jour sur l'autre.
+- Inchangé : 5 USD par position, 15 USD par token, 3 achats par jour, perte journalière maximale de -15 USD, mêmes règles d'entrée et de sortie.
+- **Compatibilité** : 5 USD par position avec 30 USD au total, cela fait au plus 6 positions ouvertes en même temps. En pratique, c'est 3 par jour au maximum. Comme on ne renforce jamais une position, une position reste à 5 USD et le plafond de 15 USD par token n'est jamais atteint.
+- **Le stop de -15 USD n'est pas une garantie** : c'est une règle du logiciel. En cas de chute brutale, de liquidité retirée (rug), de glissement de prix ou de frais, la vente peut se faire bien plus bas que prévu. Un token peut même devenir invendable. La vraie limite, c'est le montant laissé sur le compte SMD : n'y mettez pas plus que ce que vous acceptez de perdre, plus un peu de SOL pour les frais.
