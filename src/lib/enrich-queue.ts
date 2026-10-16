@@ -37,6 +37,15 @@ export function nextEnrichAfterMiss(
   };
 }
 
+/**
+ * Suivi après signal : un token alerté est ré-enrichi toutes les ~4 min pendant 70 min, en
+ * priorité. Sans cela, le flux de nouveaux tokens remplit chaque lot et aucun prix n'est
+ * mesuré après l'alerte (page Performance vide).
+ */
+export const FOLLOW_UP_WINDOW_MS = 70 * MINUTE;
+export const FOLLOW_UP_EVERY_MS = 4 * MINUTE;
+export const FOLLOW_UP_QUOTA = 8;
+
 /** Répartition du lot entre récents et anciens. */
 export function splitBatch(limit: number): { recent: number; old: number } {
   const recent = Math.max(1, Math.round(limit * RECENT_SHARE));

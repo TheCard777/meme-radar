@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { allPass, liveBuyBlocker, LIVE_RULES, preflight, sendBlocker, type PreflightCheck } from "./live-orders";
-import { evaluateEligibility, isPostMigrationDex, type MarketView } from "./paper-strategy";
+import { ENTRY_RULE_LABELS, evaluateEntry, isPostMigrationDex, type MarketView } from "./paper-strategy";
 import { INCINERATOR, toB64, zeroTransferTx } from "./solana-test-tx";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
@@ -56,7 +56,7 @@ export async function loadMarketView(mint: string): Promise<MarketView | null> {
   const d = await db();
   const { data: r } = await d
     .from("tokens")
-    .select("id, mint_address, symbol, launched_at, score, score_confidence, data_sufficient, risk_score, risk_confidence")
+    .select("id, mint_address, symbol, launched_at, score, score_confidence, data_sufficient, risk_score, risk_confidence, new_buyers, holders_top10_share")
     .eq("is_simulated", false)
     .eq("mint_address", mint)
     .maybeSingle();
@@ -72,6 +72,7 @@ export async function loadMarketView(mint: string): Promise<MarketView | null> {
     riskScore: r.risk_score ?? null, riskConfidence: r.risk_confidence ?? null,
     liquidityUsd: m?.liquidityUsd ?? null, volume1h: m?.volume1h ?? null,
     volume5m: m?.volume5m ?? null, priceUsd: m?.priceUsd ?? null,
+    newBuyers1h: r.new_buyers ?? null, top10Share: r.holders_top10_share ?? null,
   };
 }
 
@@ -153,10 +154,11 @@ export async function createBuyOrder(mint: string) {
   if (!signer()) throw new Error("TURNKEY_SIGN_WITH manquant");
   const view = await loadMarketView(mint);
   if (!view) throw new Error("Token inconnu du radar");
-  const el = evaluateEligibility(view, LIVE_RULES);
-  if (!el.eligible) {
-    const failed = el.checks.filter((c) => c.pass !== true).map((c) =>
-      `${c.pass === null ? "Donnée manquante" : "Refusé"} — ${c.label} : ${c.detail}`);
+  const entry = evaluateEntry(view, LIVE_RULES);
+  if (!entry.eligible) {
+    const failed = (["standard", "signal"] as const).flatMap((rule) =>
+      entry[rule].checks.filter((c) => c.pass !== true).map((c) =>
+        `${ENTRY_RULE_LABELS[rule]} — ${c.pass === null ? "Donnée manquante" : "Refusé"} — ${c.label} : ${c.detail}`));
     throw Object.assign(new Error(`Token non éligible :\n${failed.join("\n")}`), { reasons: failed });
   }
   const nowIso = new Date().toISOString();

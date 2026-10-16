@@ -18,19 +18,20 @@ export const getPaperMarketViews = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ at: string; views: MarketView[] }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { fetchMarketMetrics } = await import("./market.server");
+    const { PAPER_STRATEGY_V1: cfg, isPostMigrationDex } = await import("./paper-strategy");
     const now = Date.now();
-    const since = new Date(now - 120 * 60_000).toISOString();
-    const until = new Date(now - 5 * 60_000).toISOString();
+    // Fenêtre et score couvrant les deux règles d'entrée (standard et profil signal).
+    const since = new Date(now - cfg.maxAgeMinutes * 60_000).toISOString();
+    const minScore = Math.min(cfg.minOpportunityScore, cfg.signalProfile.minScore);
     const cols =
-      "id, mint_address, symbol, launched_at, score, score_confidence, data_sufficient, risk_score, risk_confidence";
+      "id, mint_address, symbol, launched_at, score, score_confidence, data_sufficient, risk_score, risk_confidence, new_buyers, holders_top10_share";
 
     const recent = await supabaseAdmin
       .from("tokens")
       .select(cols)
       .eq("is_simulated", false)
       .gte("launched_at", since)
-      .lte("launched_at", until)
-      .gte("score", 90)
+      .gte("score", minScore)
       .order("score", { ascending: false })
       .limit(30);
     if (recent.error) throw new Error(recent.error.message);
@@ -51,8 +52,6 @@ export const getPaperMarketViews = createServerFn({ method: "POST" })
       const m = await fetchMarketMetrics(mints.slice(i, i + 30));
       m.forEach((v, k) => market.set(k, v));
     }
-    const { isPostMigrationDex } = await import("./paper-strategy");
-
     const views: MarketView[] = rows.map((r) => {
       const m = market.get(r.mint_address);
       const launched = Date.parse(r.launched_at);
@@ -71,6 +70,8 @@ export const getPaperMarketViews = createServerFn({ method: "POST" })
         volume1h: m?.volume1h ?? null,
         volume5m: m?.volume5m ?? null,
         priceUsd: m?.priceUsd ?? null,
+        newBuyers1h: r.new_buyers ?? null,
+        top10Share: r.holders_top10_share ?? null,
       };
     });
     return { at: new Date(now).toISOString(), views };

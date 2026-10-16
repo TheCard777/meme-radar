@@ -5,13 +5,14 @@ import { AppShell } from "@/components/radar/AppShell";
 import { Button } from "@/components/ui/button";
 import { getPaperMarketViews } from "@/lib/paper-strategy.functions";
 import {
+  ENTRY_RULE_LABELS,
   EXIT_REASON_LABELS,
   PAPER_STRATEGY_V1 as CFG,
   REAL_TRADING_ENABLED,
   dailyStats,
   emptyLedger,
   entryBlocker,
-  evaluateEligibility,
+  evaluateEntry,
   positionPnl,
   stepLedger,
   type PaperLedger,
@@ -118,18 +119,23 @@ function StrategyPage() {
           {q.isError && <p className="text-sm text-destructive">Lecture impossible : {String(q.error)}</p>}
           <ul className="space-y-3 text-sm">
             {(q.data?.views ?? []).map((v) => {
-              const e = evaluateEligibility(v);
+              const e = evaluateEntry(v);
               const block = ledger && e.eligible ? entryBlocker(ledger, v, now) : null;
+              // Sans règle satisfaite : on montre les critères de la règle qui correspond à l'âge du token.
+              const shown =
+                e.rule ?? (v.ageMinutes !== null && v.ageMinutes <= CFG.signalProfile.maxAgeMinutes ? "signal" : "standard");
               return (
                 <li key={v.mint} className="rounded border border-border p-3">
                   <div className="flex flex-wrap justify-between gap-2">
                     <span className="font-mono">{v.symbol} · {v.mint}</span>
                     <span className={e.eligible ? "text-primary" : "text-muted-foreground"}>
-                      {e.eligible ? (block ? `Éligible — bloqué : ${block}` : "Éligible") : "Non éligible"}
+                      {e.eligible
+                        ? `Éligible (${ENTRY_RULE_LABELS[shown]})${block ? ` — bloqué : ${block}` : ""}`
+                        : `Non éligible (${ENTRY_RULE_LABELS[shown]})`}
                     </span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {e.checks.map((c) => (
+                    {e[shown].checks.map((c) => (
                       <span
                         key={c.key}
                         className={`rounded px-1.5 py-0.5 text-xs ${c.pass === true ? "bg-primary/15 text-primary" : c.pass === false ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"}`}

@@ -5,6 +5,8 @@ import {
   emptyLedger,
   entryBlocker,
   evaluateEligibility,
+  evaluateEntry,
+  evaluateSignalProfile,
   stepLedger,
   type MarketView,
 } from "./paper-strategy";
@@ -16,7 +18,7 @@ const view = (o: Partial<MarketView> = {}): MarketView => ({
   tokenId: "t1", mint: "MintAAA", symbol: "AAA", ageMinutes: 30, dex: "raydium",
   postMigrationPool: true, opportunityScore: 92, opportunityConfidence: 0.85,
   riskScore: 20, riskConfidence: 0.9, liquidityUsd: 30_000, volume1h: 10_000,
-  volume5m: 2_000, priceUsd: 1, ...o,
+  volume5m: 2_000, priceUsd: 1, newBuyers1h: 50, top10Share: 0.4, ...o,
 });
 
 describe("paper strategy V1", () => {
@@ -94,5 +96,55 @@ describe("paper strategy V1", () => {
       l.open.push({ id: `o${i}`, tokenId: `o${i}`, mint: `O${i}`, symbol: "O", stakeUsd: 5, entryPrice: 1,
         entryLiquidityUsd: 30_000, openedAt: "2026-10-15T10:00:00.000Z", lastPrice: 1, lastPriceAt: T0 });
     expect(entryBlocker(l, view(), T0)).toMatch(/30 \$/);
+  });
+});
+
+// Profils réels des signaux gagnants du propriétaire (MemeTrace, SpaceX).
+const memeTrace = (o: Partial<MarketView> = {}) =>
+  view({
+    mint: "HUARG", symbol: "MemeTrace", ageMinutes: 1, dex: "pumpfun", postMigrationPool: false,
+    opportunityScore: 82, opportunityConfidence: 0.55, riskScore: null, riskConfidence: 0,
+    liquidityUsd: null, volume1h: 39_624, volume5m: 39_624, priceUsd: 0.00001246,
+    newBuyers1h: 412, top10Share: 0.215, ...o,
+  });
+const spaceX = view({
+  mint: "E85A", symbol: "SpaceX", ageMinutes: 2, opportunityScore: 76, opportunityConfidence: 0.7,
+  riskScore: null, riskConfidence: 0, liquidityUsd: 51_378, volume1h: 18_053, volume5m: 18_053,
+  newBuyers1h: 226, top10Share: 0.139,
+});
+
+describe("profil signal (2e règle d'entrée)", () => {
+  it("accepte les deux signaux gagnants, refusés par la règle standard", () => {
+    for (const v of [memeTrace(), spaceX]) {
+      const e = evaluateEntry(v);
+      expect(e.standard.eligible).toBe(false);
+      expect(e.rule).toBe("signal");
+    }
+  });
+
+  it("préfère la règle standard quand elle passe", () =>
+    expect(evaluateEntry(view({ ageMinutes: 8, newBuyers1h: 300, top10Share: 0.2, volume1h: 20_000, volume5m: 3_000 })).rule).toBe("standard"));
+
+  it.each([
+    ["trop vieux", { ageMinutes: 11 }],
+    ["score 74", { opportunityScore: 74 }],
+    ["199 acheteurs", { newBuyers1h: 199 }],
+    ["acheteurs inconnus", { newBuyers1h: null }],
+    ["top 10 à 26 %", { top10Share: 0.26 }],
+    ["top 10 inconnu", { top10Share: null }],
+    ["volume 14 999 $", { volume1h: 14_999 }],
+    ["risque mesuré 30", { riskScore: 30 }],
+    ["prix inconnu", { priceUsd: null }],
+  ])("refuse : %s", (_l, o) => {
+    expect(evaluateSignalProfile(memeTrace(o)).eligible).toBe(false);
+    expect(evaluateEntry(memeTrace(o)).eligible).toBe(false);
+  });
+
+  it("risque mesuré < 30 accepté", () => expect(evaluateSignalProfile(memeTrace({ riskScore: 29 })).eligible).toBe(true));
+
+  it("la simulation ouvre une position sur la courbe Pump.fun (liquidité inconnue)", () => {
+    const { opened } = stepLedger(emptyLedger(), [memeTrace()], T0);
+    expect(opened).toHaveLength(1);
+    expect(opened[0]?.entryLiquidityUsd).toBe(0);
   });
 });

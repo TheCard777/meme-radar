@@ -34,6 +34,16 @@ export const PAPER_STRATEGY_V1 = Object.freeze({
   exitRiskScore: 55,
   exitLiquidityDropPct: 0.3, // baisse de liquidité ≥ 30 % vs entrée
   dailyLossLimitUsd: -15, // réalisé + latent, seuil logiciel
+  // 2e règle d'entrée, calquée sur les signaux gagnants du propriétaire : très jeunes, beaucoup
+  // d'acheteurs, holders répartis. Risque et liquidité inconnus acceptés (token possiblement
+  // encore sur la courbe Pump.fun) ; un risque mesuré doit rester < maxRiskScore.
+  signalProfile: Object.freeze({
+    maxAgeMinutes: 10,
+    minScore: 75,
+    minBuyers1h: 200,
+    maxTop10Share: 0.25,
+    minVolume1hUsd: 15_000,
+  }),
 });
 
 export type PaperConfig = typeof PAPER_STRATEGY_V1;
@@ -54,6 +64,9 @@ export interface MarketView {
   volume1h: number | null;
   volume5m: number | null;
   priceUsd: number | null;
+  /** Acheteurs sur 1 h et part du top 10 des holders, au dernier enrichissement. */
+  newBuyers1h: number | null;
+  top10Share: number | null;
 }
 
 export interface EligibilityCheck {
@@ -96,14 +109,15 @@ function check(
   return { key, label, pass: test(value), detail: fmt(value) };
 }
 
+const pct = (v: number) => `${Math.round(v * 100)} %`;
+const usd = (v: number) => `${Math.round(v).toLocaleString("fr-FR")} $`;
+
 export function evaluateEligibility(view: MarketView, cfg: PaperConfig = PAPER_STRATEGY_V1): Eligibility {
   const accel = acceleration(view);
   const ratio =
     isNum(view.volume1h) && isNum(view.liquidityUsd) && view.liquidityUsd > 0
       ? view.volume1h / view.liquidityUsd
       : null;
-  const pct = (v: number) => `${Math.round(v * 100)} %`;
-  const usd = (v: number) => `${Math.round(v).toLocaleString("fr-FR")} $`;
   const checks: EligibilityCheck[] = [
     {
       key: "pool",
@@ -132,6 +146,51 @@ export function evaluateEligibility(view: MarketView, cfg: PaperConfig = PAPER_S
     check("price", "Prix mesuré", view.priceUsd, (v) => v > 0, (v) => `${v} $`),
   ];
   return { eligible: checks.every((c) => c.pass === true), checks };
+}
+
+/** 2e règle d'entrée : profil des signaux gagnants (voir `signalProfile`). */
+export function evaluateSignalProfile(view: MarketView, cfg: PaperConfig = PAPER_STRATEGY_V1): Eligibility {
+  const p = cfg.signalProfile;
+  const riskLabel = `Risque < ${cfg.maxRiskScore} si mesuré`;
+  const checks: EligibilityCheck[] = [
+    check("age", `Âge ≤ ${p.maxAgeMinutes} min`, view.ageMinutes,
+      (v) => v <= p.maxAgeMinutes, (v) => `${Math.round(v)} min`),
+    check("score", `Score opportunité ≥ ${p.minScore}`, view.opportunityScore,
+      (v) => v >= p.minScore, (v) => String(Math.round(v))),
+    check("buyers", `Acheteurs 1h ≥ ${p.minBuyers1h}`, view.newBuyers1h,
+      (v) => v >= p.minBuyers1h, (v) => String(Math.round(v))),
+    check("top10", `Top 10 holders ≤ ${pct(p.maxTop10Share)}`, view.top10Share,
+      (v) => v <= p.maxTop10Share, pct),
+    check("volume", `Volume 1h ≥ ${usd(p.minVolume1hUsd)}`, view.volume1h,
+      (v) => v >= p.minVolume1hUsd, usd),
+    isNum(view.riskScore)
+      ? check("risk", riskLabel, view.riskScore, (v) => v < cfg.maxRiskScore, (v) => String(Math.round(v)))
+      : { key: "risk", label: riskLabel, pass: true, detail: "non évaluable (accepté)" },
+    check("price", "Prix mesuré", view.priceUsd, (v) => v > 0, (v) => `${v} $`),
+  ];
+  return { eligible: checks.every((c) => c.pass === true), checks };
+}
+
+export type EntryRule = "standard" | "signal";
+export const ENTRY_RULE_LABELS: Record<EntryRule, string> = {
+  standard: "Règle standard",
+  signal: "Profil signal",
+};
+
+export interface EntryDecision {
+  eligible: boolean;
+  /** Règle satisfaite (la standard est préférée), null si aucune. */
+  rule: EntryRule | null;
+  standard: Eligibility;
+  signal: Eligibility;
+}
+
+/** Un token est achetable s'il satisfait la règle standard OU le profil signal. */
+export function evaluateEntry(view: MarketView, cfg: PaperConfig = PAPER_STRATEGY_V1): EntryDecision {
+  const standard = evaluateEligibility(view, cfg);
+  const signal = evaluateSignalProfile(view, cfg);
+  const rule: EntryRule | null = standard.eligible ? "standard" : signal.eligible ? "signal" : null;
+  return { eligible: rule !== null, rule, standard, signal };
 }
 
 // ---------------------------------------------------------------------------
@@ -297,7 +356,7 @@ export function stepLedger(
   let next: PaperLedger = { version: 1, open, closed: [...ledger.closed, ...closedNow] };
   const openedNow: PaperPosition[] = [];
   const candidates = views
-    .filter((v) => evaluateEligibility(v, cfg).eligible)
+    .filter((v) => evaluateEntry(v, cfg).eligible)
     .sort((a, b) => (b.opportunityScore ?? 0) - (a.opportunityScore ?? 0));
   for (const v of candidates) {
     if (entryBlocker(next, v, nowIso, cfg)) continue;
@@ -308,7 +367,7 @@ export function stepLedger(
       symbol: v.symbol,
       stakeUsd: cfg.stakeUsd,
       entryPrice: v.priceUsd as number,
-      entryLiquidityUsd: v.liquidityUsd as number,
+      entryLiquidityUsd: v.liquidityUsd ?? 0, // inconnue sur la courbe Pump.fun
       openedAt: nowIso,
       lastPrice: v.priceUsd as number,
       lastPriceAt: nowIso,
