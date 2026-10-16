@@ -66,7 +66,7 @@ export async function fetchSmartWalletAlerts(): Promise<
  */
 export const RADAR_DISPLAY_LIMIT = 1000;
 /** Taille d'une page chargée depuis la base (pagination « Charger plus »). */
-export const TOKENS_PAGE_SIZE = 200;
+export const TOKENS_PAGE_SIZE = 40;
 
 /**
  * Colonnes légères pour la liste : les JSON lourds (facteurs de score/risque,
