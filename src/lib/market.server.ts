@@ -143,6 +143,7 @@ export async function fetchMarketMetrics(
       pairUrl: pair.url ?? `https://dexscreener.com/solana/${address}`,
     });
   }
+  for (const m of missing) cache.set(m, { at: fetchedAt, value: result.get(m) ?? null });
 
   return result;
 }
