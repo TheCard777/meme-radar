@@ -114,7 +114,7 @@ export async function fetchTokenDetail(id: string): Promise<TokenRow | null> {
 export async function fetchTotalRealTokenCount(): Promise<number> {
   const { count, error } = await supabase
     .from("tokens")
-    .select("id", { count: "exact", head: true })
+    .select("id", { count: "planned", head: true })
     .eq("is_simulated", false);
   if (error) throw error;
   return count ?? 0;
