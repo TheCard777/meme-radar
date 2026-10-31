@@ -448,6 +448,24 @@ async function handleGet(action: string, url: URL): Promise<Response> {
       if (error) throw new Error(error.message);
       return Response.json({ ok: true, tokens: data ?? [] });
     }
+    case "signals": {
+      // Tokens alertés récemment (SIGNAL/PRIORITÉ), lus par DEDO AI. Lecture seule ;
+      // s'appuie sur l'index partiel tokens_last_alert_idx.
+      const minutes = Math.min(Math.max(Number(url.searchParams.get("minutes") ?? 120) || 120, 5), 1440);
+      const since = new Date(Date.now() - minutes * 60_000).toISOString();
+      const { data, error } = await db
+        .from("tokens")
+        .select(
+          "mint_address, symbol, score, score_confidence, risk_score, risk_confidence, risk_level, alert_level, alerted_score, last_alert_at, launched_at, smart_wallet_count, new_buyers, holders_top10_share, liquidity_usd, price_usd",
+        )
+        .eq("is_simulated", false)
+        .gte("last_alert_at", since)
+        .neq("alert_level", "none")
+        .order("last_alert_at", { ascending: false })
+        .limit(50);
+      if (error) throw new Error(error.message);
+      return Response.json({ ok: true, signals: data ?? [] });
+    }
     case "wallets": {
       const { data, error } = await db
         .from("smart_wallets")
