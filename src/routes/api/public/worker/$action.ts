@@ -449,6 +449,257 @@ async function handleGet(action: string, url: URL): Promise<Response> {
       return Response.json({ ok: true, tokens: data ?? [] });
     }
     case "signals": {
+      // Tokens alertés récemment (SIGNAL/PRIORITÉ), lus par DEDO AI. Lecture seule.
+      // Passe par la petite table alerts (index alerts_created_idx) puis lit les
+      // tokens par clé primaire : jamais de parcours de la table tokens.
+      const minutes = Math.min(Math.max(Number(url.searchParams.get("minutes") ?? 120) || 120, 5), 1440);
+      const since = new Date(Date.now() - minutes * 60_000).toISOString();
+      const { data: alerts, error: alertsError } = await db
+        .from("alerts")
+        .select("token_id, created_at")
+        .gte("created_at", since)
+        .eq("is_simulated", false)
+        .in("level", ["signal", "critical"])
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (alertsError) throw new Error(alertsError.message);
+      const ids = [...new Set((alerts ?? []).map((a) => a.token_id).filter((id): id is string => Boolean(id)))];
+      if (!ids.length) return Response.json({ ok: true, signals: [] });
+      const { data, error } = await db
+        .from("tokens")
+        .select(
+          "mint_address, symbol, score, score_confidence, risk_score, risk_confidence, risk_level, alert_level, alerted_score, last_alert_at, launched_at, smart_wallet_count, new_buyers, holders_top10_share, liquidity_usd, price_usd",
+        )
+        .in("id", ids)
+        .eq("is_simulated", false)
+        .neq("alert_level", "none");
+      if (error) throw new Error(error.message);
+      return Response.json({ ok: true, signals: data ?? [] });
+    }
+    case "wallets": {
+      const { wallets, entries } = walletsSchema.parse(body);
+      let walletsUpserted = 0;
+      if (wallets.length > 0) {
+        const { error } = await db.from("smart_wallets").upsert(
+          wallets.map((w) => ({
+            address: w.address,
+            is_simulated: false,
+            smart_wallet_score: w.smartWalletScore,
+            early_entries: w.earlyEntries,
+            tokens_tracked: w.tokensTracked,
+            success_count: w.successCount,
+            success_rate: w.successRate,
+            median_multiple: w.medianMultiple,
+            data_sufficient: w.dataSufficient,
+            reasons: w.reasons,
+            last_active_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })),
+          { onConflict: "address" },
+        );
+        if (error) throw new Error(error.message);
+        walletsUpserted = wallets.length;
+      }
+
+      let entriesInserted = 0;
+      if (entries.length > 0) {
+        const ids = await mintIds(
+          db,
+          entries.map((e) => e.mintAddress),
+        );
+        const rows = entries
+          .filter((e) => ids.has(e.mintAddress))
+          .map((e) => ({
+            token_id: ids.get(e.mintAddress) as string,
+            wallet_address: e.walletAddress,
+            mint_address: e.mintAddress,
+            signature: e.signature,
+            entry_rank: e.entryRank,
+            amount_raw: e.amountRaw,
+            block_time: e.blockTime,
+          }));
+        if (rows.length > 0) {
+          const { error } = await db
+            .from("wallet_token_entries")
+            .upsert(rows, { onConflict: "wallet_address,token_id", ignoreDuplicates: true });
+          if (error) throw new Error(error.message);
+          entriesInserted = rows.length;
+        }
+      }
+      log("wallets_ingested", { walletsUpserted, entriesInserted });
+      return Response.json({ ok: true, walletsUpserted, entriesInserted });
+    }
+
+    case "scores": {
+      const { scores } = scoresSchema.parse(body);
+      let updated = 0;
+      for (const s of scores) {
+        const patch: Record<string, unknown> = {
+          score: s.score,
+          score_factors: s.scoreFactors,
+          score_confidence: s.scoreConfidence,
+          data_sufficient: s.dataSufficient,
+          missing_metrics: s.missingMetrics,
+          last_enriched_at: new Date().toISOString(),
+        };
+        if (s.status) patch["status"] = s.status;
+        if (s.smartWalletCount !== undefined) patch["smart_wallet_count"] = s.smartWalletCount;
+        const { error } = await db
+          .from("tokens")
+          .update(patch as never)
+          .eq("mint_address", s.mintAddress)
+          .eq("is_simulated", false);
+        if (error) throw new Error(error.message);
+        updated += 1;
+      }
+      log("scores_ingested", { updated });
+      return Response.json({ ok: true, updated });
+    }
+
+    case "alerts": {
+      const alert = alertsSchema.parse(body);
+      const { data: token, error: tokenError } = await db
+        .from("tokens")
+        .select("id, symbol, is_simulated")
+        .eq("mint_address", alert.mintAddress)
+        .eq("is_simulated", false)
+        .maybeSingle();
+      if (tokenError) throw new Error(tokenError.message);
+      if (!token) {
+        log("alert_rejected", { reason: "unknown_or_simulated_token" });
+        return Response.json({ ok: false, error: "token_not_found_or_simulated" }, { status: 404 });
+      }
+
+      const { error } = await db.from("alerts").insert({
+        token_id: token.id,
+        token_mint: alert.mintAddress,
+        token_symbol: token.symbol,
+        level: alert.level,
+        score: alert.score,
+        message: alert.message,
+        channel: alert.channel,
+        price_usd_at_alert: alert.priceUsdAtAlert,
+        market_cap_at_alert: alert.marketCapAtAlert,
+        is_simulated: false,
+      });
+      if (error) throw new Error(error.message);
+
+      const { error: stateError } = await db
+        .from("tokens")
+        .update({
+          alert_level: alert.alertLevel,
+          alerted_score: alert.alertedScore ?? alert.score,
+          last_alert_at: new Date().toISOString(),
+        } as never)
+        .eq("id", token.id);
+      if (stateError) throw new Error(stateError.message);
+
+      log("alert_recorded", { level: alert.level, score: alert.score });
+      return Response.json({ ok: true });
+    }
+
+    case "state": {
+      const report = stateSchema.parse(body);
+      const { error } = await db
+        .from("collector_state")
+        .update({
+          runtime_state: report.runtimeState,
+          source: report.source,
+          last_error: report.lastError,
+          events_received: report.eventsReceived,
+          tokens_confirmed: report.tokensConfirmed,
+          reconnects: report.reconnects,
+          last_signature: report.lastSignature,
+          last_event_at: report.lastEventAt,
+          last_heartbeat_at: new Date().toISOString(),
+        })
+        .eq("singleton", true);
+      if (error) throw new Error(error.message);
+      return Response.json({ ok: true });
+    }
+
+    case "enrich": {
+      // Le calcul (DEX Screener + RPC + scoring + Telegram) s'exécute côté
+      // Lovable Cloud, là où les secrets vivent. Le worker ne fait que déclencher.
+      const { analyzeRealWallets } = await import("@/lib/wallets.server");
+      const { enrichRealTokens } = await import("@/lib/enrichment.server");
+      const { detectSmartWalletEntries } = await import("@/lib/smart-wallet-alerts.server");
+      const wallets = await analyzeRealWallets();
+      const enrichment = await enrichRealTokens();
+      // Alertes « Smart Wallet Entry » : jamais bloquantes pour le cycle.
+      let smartWalletAlerts: Awaited<ReturnType<typeof detectSmartWalletEntries>> | null = null;
+      try {
+        smartWalletAlerts = await detectSmartWalletEntries();
+      } catch (error) {
+        log("smart_wallet_alerts_error", {
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+      log("enrich_cycle", {
+        tokensAnalyzed: wallets.tokensAnalyzed,
+        enriched: enrichment.enriched,
+        alertsCreated: enrichment.alertsCreated,
+        smartWalletAlertsCreated: smartWalletAlerts?.created ?? 0,
+        smartWalletTelegramSent: smartWalletAlerts?.telegramSent ?? 0,
+      });
+      return Response.json({ ok: true, wallets, smartWalletAlerts, ...enrichment });
+    }
+
+    default:
+      return Response.json({ ok: false, error: "unknown_action" }, { status: 404 });
+  }
+}
+
+async function mintIds(
+  db: Awaited<ReturnType<typeof admin>>,
+  mints: string[],
+): Promise<Map<string, string>> {
+  const unique = [...new Set(mints)];
+  const { data, error } = await db
+    .from("tokens")
+    .select("id, mint_address")
+    .in("mint_address", unique)
+    .eq("is_simulated", false);
+  if (error) throw new Error(error.message);
+  return new Map((data ?? []).map((row) => [row.mint_address as string, row.id as string]));
+}
+
+async function handleGet(action: string, url: URL): Promise<Response> {
+  const db = await admin();
+  if (action !== "read") return Response.json({ ok: false, error: "unknown_action" }, { status: 404 });
+
+  const resource = url.searchParams.get("resource") ?? "state";
+  switch (resource) {
+    case "state": {
+      const { data } = await db
+        .from("collector_state")
+        .select("desired_state, runtime_state, last_heartbeat_at")
+        .limit(1)
+        .maybeSingle();
+      return Response.json({ ok: true, state: data ?? null });
+    }
+    case "settings": {
+      const { data } = await db
+        .from("bot_settings")
+        .select("status, telegram_threshold, critical_threshold, signal_categories, demo_mode")
+        .limit(1)
+        .maybeSingle();
+      return Response.json({ ok: true, settings: data ?? null });
+    }
+    case "tokens": {
+      const limit = Math.min(Number(url.searchParams.get("limit") ?? 50), 200);
+      const { data, error } = await db
+        .from("tokens")
+        .select(
+          "id, mint_address, symbol, score, status, alert_level, last_alert_at, last_enriched_at, launched_at",
+        )
+        .eq("is_simulated", false)
+        .order("launched_at", { ascending: false })
+        .limit(limit);
+      if (error) throw new Error(error.message);
+      return Response.json({ ok: true, tokens: data ?? [] });
+    }
+    case "signals": {
       // Tokens alertés récemment (SIGNAL/PRIORITÉ), lus par DEDO AI. Lecture seule ;
       // s'appuie sur l'index partiel tokens_last_alert_idx.
       const minutes = Math.min(Math.max(Number(url.searchParams.get("minutes") ?? 120) || 120, 5), 1440);
