@@ -478,6 +478,38 @@ async function handleGet(action: string, url: URL): Promise<Response> {
       if (error) throw new Error(error.message);
       return Response.json({ ok: true, signals: data ?? [] });
     }
+    case "early": {
+      // Alertes Early Opportunity récentes, lues par DEDO AI (compte test). Lecture seule :
+      // index early_opportunity_alerts_detected_at_idx puis tokens par clé primaire.
+      const minutes = Math.min(Math.max(Number(url.searchParams.get("minutes") ?? 60) || 60, 5), 1440);
+      const since = new Date(Date.now() - minutes * 60_000).toISOString();
+      const { data: early, error: earlyError } = await db
+        .from("early_opportunity_alerts")
+        .select("token_id, token_mint, token_symbol, buyers, liquidity_usd, market_cap, age_minutes, volume_1h_usd, acceleration, early_strength, detected_at")
+        .gte("detected_at", since)
+        .order("detected_at", { ascending: false })
+        .limit(30);
+      if (earlyError) throw new Error(earlyError.message);
+      const rows = (early ?? []) as Array<{ token_id: string | null } & Record<string, unknown>>;
+      const ids = [...new Set(rows.map((row) => row.token_id).filter((id: string | null): id is string => Boolean(id)))];
+      const tokens = new Map<string, Record<string, unknown>>();
+      if (ids.length) {
+        const { data, error } = await db
+          .from("tokens")
+          .select("id, score, risk_score, risk_confidence, holders_top10_share, new_buyers, smart_wallet_count, launched_at")
+          .in("id", ids)
+          .eq("is_simulated", false);
+        if (error) throw new Error(error.message);
+        for (const t of (data ?? []) as Array<{ id: string } & Record<string, unknown>>) tokens.set(t.id, t);
+      }
+      const signals = rows
+        .filter((row) => row.token_id && tokens.has(row.token_id))
+        .map((row) => {
+          const { id: _id, ...token } = tokens.get(row.token_id!)!;
+          return { ...row, ...token };
+        });
+      return Response.json({ ok: true, early: signals });
+    }
     case "wallets": {
       const { data, error } = await db
         .from("smart_wallets")

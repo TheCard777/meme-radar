@@ -55,7 +55,7 @@ directement en base.
 | POST | `/api/public/worker/alerts` | `{"mintAddress","level":"signal|critical","score","message","channel","priceUsdAtAlert","marketCapAtAlert","alertLevel":"none|signal|priority","alertedScore"}` |
 | POST | `/api/public/worker/state` | rapport heartbeat du collecteur |
 | POST | `/api/public/worker/enrich` | `{}` — lance wallets + enrichissement + scoring + Telegram côté Cloud |
-| GET | `/api/public/worker/read?resource=state\|settings\|tokens\|wallets\|signals` | lecture (`signals` : tokens alertés des `minutes` dernières, lus par DEDO AI) |
+| GET | `/api/public/worker/read?resource=state\|settings\|tokens\|wallets\|signals\|early` | lecture (`signals` : tokens alertés ; `early` : alertes Early Opportunity ; fenêtre `minutes` ; lus par DEDO AI) |
 
 Toutes les écritures restent sur les données réelles (`is_simulated = false`),
 RLS et service-role restent exclusivement côté serveur, et chaque appel est
