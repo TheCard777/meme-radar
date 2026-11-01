@@ -470,7 +470,7 @@ async function handleGet(action: string, url: URL): Promise<Response> {
       const { data, error } = await db
         .from("tokens")
         .select(
-          "mint_address, symbol, score, score_confidence, risk_score, risk_confidence, risk_level, alert_level, alerted_score, last_alert_at, launched_at, smart_wallet_count, new_buyers, holders_top10_share, liquidity_usd, price_usd",
+          "mint_address, symbol, score, score_confidence, risk_score, risk_confidence, risk_level, alert_level, alerted_score, last_alert_at, launched_at, smart_wallet_count, new_buyers, holders_top10_share, liquidity_usd, price_usd, creator_address, creator_previous_tokens, lp_status",
         )
         .in("id", ids)
         .eq("is_simulated", false)
@@ -496,7 +496,7 @@ async function handleGet(action: string, url: URL): Promise<Response> {
       if (ids.length) {
         const { data, error } = await db
           .from("tokens")
-          .select("id, score, risk_score, risk_confidence, holders_top10_share, new_buyers, smart_wallet_count, launched_at")
+          .select("id, score, risk_score, risk_confidence, holders_top10_share, new_buyers, smart_wallet_count, launched_at, creator_address, creator_previous_tokens, lp_status")
           .in("id", ids)
           .eq("is_simulated", false);
         if (error) throw new Error(error.message);
