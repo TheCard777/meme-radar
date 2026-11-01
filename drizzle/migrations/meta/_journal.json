@@ -22,6 +22,13 @@
       "when": 1792134533185,
       "tag": "0002_live_trading_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793535589158,
+      "tag": "0003_perf_indexes_snapshots_creator",
+      "breakpoints": true
     }
   ]
 }
